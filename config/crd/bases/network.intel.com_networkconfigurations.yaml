@@ -1,0 +1,124 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.14.0
+  name: networkconfigurations.network.intel.com
+spec:
+  group: network.intel.com
+  names:
+    kind: NetworkConfiguration
+    listKind: NetworkConfigurationList
+    plural: networkconfigurations
+    singular: networkconfiguration
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: NetworkConfiguration is the Schema for the networkconfigurations
+          API
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: NetworkConfigurationSpec defines the desired state of NetworkConfiguration
+            properties:
+              configurationType:
+                description: |-
+                  Configuration type that the operator will configure to the nodes. Possible options: gaudi-so.
+                  TODO: plausible other options: host-nic
+                enum:
+                - gaudi-so
+                type: string
+              gaudiScaleOut:
+                description: Gaudi Scale-Out specific settings. Only valid when configuration
+                  type is 'gaudi-so'
+                properties:
+                  ipRange:
+                    description: |-
+                      IP range to be distributed for the scale-out interfaces over all nodes. Used with L3 layer selection.
+                      Should be an IPv4 subnet string. e.g. 192.168.100.0/24
+                    type: string
+                  layer:
+                    description: 'Configuration types that the operator will configure
+                      to the nodes. Possible options: gaudi-so.'
+                    enum:
+                    - L2
+                    - L3
+                    - L3BGP
+                    type: string
+                required:
+                - layer
+                type: object
+              hostnicScaleOut:
+                description: Host-NIC Scale-Out specific settings. Only valid when
+                  configuration type is 'host-nic'
+                properties:
+                  ipRange:
+                    description: IP range to be distributed for the scale-out interfaces
+                      over all nodes.
+                    type: string
+                  vendor:
+                    description: Vendor for the scale-out NIC(s).
+                    enum:
+                    - melanox
+                    type: string
+                required:
+                - vendor
+                type: object
+              logLevel:
+                description: LogLevel sets the operator's log level.
+                minimum: 0
+                type: integer
+              nodeSelector:
+                additionalProperties:
+                  type: string
+                description: Select which nodes the operator should target. Align
+                  with labels created by NFD.
+                type: object
+            required:
+            - configurationType
+            - nodeSelector
+            type: object
+          status:
+            description: NetworkConfigurationStatus defines the observed state of
+              NetworkConfiguration
+            properties:
+              errors:
+                items:
+                  type: string
+                type: array
+              ready:
+                type: integer
+              state:
+                type: string
+              targets:
+                type: integer
+            required:
+            - errors
+            - ready
+            - state
+            - targets
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
