@@ -1,9 +1,13 @@
 apiVersion: network.intel.com/v1alpha1
 kind: NetworkConfiguration
 metadata:
-  labels:
-    app.kubernetes.io/name: intel-kubernetes-network-operator
-    app.kubernetes.io/managed-by: kustomize
-  name: networkconfiguration-sample
+  name: networkconfiguration-gaudi-scale-out
 spec:
-  # TODO(user): Add fields here
+  configurationType: gaudi-so
+  gaudiScaleOut:
+    #layer: L3BGP
+    layer: L2
+    image: foobar.lan/gaudi-scale-out-conf:latest
+    pullPolicy: IfNotPresent
+  nodeSelector:
+    intel.feature.node.kubernetes.io/gpu: "true"

@@ -25,6 +25,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/intel/intel-network-operator-for-kubernetes/api/v1alpha1"
 	networkv1alpha1 "github.com/intel/intel-network-operator-for-kubernetes/api/v1alpha1"
 )
 
@@ -49,7 +50,10 @@ var _ = Describe("NetworkConfiguration Controller", func() {
 						Name:      resourceName,
 						Namespace: "default",
 					},
-					// TODO(user): Specify other spec details if needed.
+
+					Spec: v1alpha1.NetworkConfigurationSpec{
+						ConfigurationType: "gaudi-so",
+					},
 				}
 				Expect(k8sClient.Create(ctx, resource)).To(Succeed())
 			}

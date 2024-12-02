@@ -51,21 +51,31 @@ spec:
                 description: Gaudi Scale-Out specific settings. Only valid when configuration
                   type is 'gaudi-so'
                 properties:
-                  ipRange:
+                  image:
+                    description: Container image to handle interface configurations
+                      on the worker nodes.
+                    type: string
+                  l3IpRange:
                     description: |-
                       IP range to be distributed for the scale-out interfaces over all nodes. Used with L3 layer selection.
                       Should be an IPv4 subnet string. e.g. 192.168.100.0/24
+                      TODO: move to an external CRD and refer here?
                     type: string
                   layer:
-                    description: 'Configuration types that the operator will configure
-                      to the nodes. Possible options: gaudi-so.'
+                    description: 'Layer where the configuration should occur. Possible
+                      options: L2, L3 and L3BGP.'
                     enum:
                     - L2
                     - L3
                     - L3BGP
                     type: string
-                required:
-                - layer
+                  pullPolicy:
+                    description: Normal image pull policy used in the resulting daemonset.
+                    enum:
+                    - Never
+                    - Always
+                    - IfNotPresent
+                    type: string
                 type: object
               hostnicScaleOut:
                 description: Host-NIC Scale-Out specific settings. Only valid when
@@ -80,8 +90,6 @@ spec:
                     enum:
                     - melanox
                     type: string
-                required:
-                - vendor
                 type: object
               logLevel:
                 description: LogLevel sets the operator's log level.
@@ -95,7 +103,6 @@ spec:
                 type: object
             required:
             - configurationType
-            - nodeSelector
             type: object
           status:
             description: NetworkConfigurationStatus defines the observed state of
@@ -106,10 +113,12 @@ spec:
                   type: string
                 type: array
               ready:
+                format: int32
                 type: integer
               state:
                 type: string
               targets:
+                format: int32
                 type: integer
             required:
             - errors

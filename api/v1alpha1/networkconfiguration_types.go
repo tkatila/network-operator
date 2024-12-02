@@ -28,7 +28,7 @@ type NetworkConfigurationSpec struct {
 	ConfigurationType string `json:"configurationType"`
 
 	// Select which nodes the operator should target. Align with labels created by NFD.
-	NodeSelector map[string]string `json:"nodeSelector"`
+	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
 
 	// Gaudi Scale-Out specific settings. Only valid when configuration type is 'gaudi-so'
 	GaudiScaleOut GaudiScaleOutSpec `json:"gaudiScaleOut,omitempty"`
@@ -43,13 +43,21 @@ type NetworkConfigurationSpec struct {
 
 // NetworkConfigurationSpec defines the desired state of NetworkConfiguration
 type GaudiScaleOutSpec struct {
-	// Configuration types that the operator will configure to the nodes. Possible options: gaudi-so.
+	// Layer where the configuration should occur. Possible options: L2, L3 and L3BGP.
 	// +kubebuilder:validation:Enum=L2;L3;L3BGP
-	Layer string `json:"layer"`
+	Layer string `json:"layer,omitempty"`
+
+	// Container image to handle interface configurations on the worker nodes.
+	Image string `json:"image,omitempty"`
+
+	// Normal image pull policy used in the resulting daemonset.
+	// +kubebuilder:validation:Enum=Never;Always;IfNotPresent
+	PullPolicy string `json:"pullPolicy,omitempty"`
 
 	// IP range to be distributed for the scale-out interfaces over all nodes. Used with L3 layer selection.
 	// Should be an IPv4 subnet string. e.g. 192.168.100.0/24
-	IPRange string `json:"ipRange,omitempty"`
+	// TODO: move to an external CRD and refer here?
+	L3IpRange string `json:"l3IpRange,omitempty"`
 }
 
 // Alternative to Gaudi ScaleOut spec
@@ -60,13 +68,13 @@ type HostNicScaleOutSpec struct {
 
 	// Vendor for the scale-out NIC(s).
 	// +kubebuilder:validation:Enum=melanox
-	Vendor string `json:"vendor"`
+	Vendor string `json:"vendor,omitempty"`
 }
 
 // NetworkConfigurationStatus defines the observed state of NetworkConfiguration
 type NetworkConfigurationStatus struct {
-	Targets    int      `json:"targets"`
-	ReadyNodes int      `json:"ready"`
+	Targets    int32    `json:"targets"`
+	ReadyNodes int32    `json:"ready"`
 	State      string   `json:"state"`
 	Errors     []string `json:"errors"`
 }

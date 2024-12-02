@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: gaudi-l3bgp-conf
+  labels:
+    app: gaudi-l3bgp-conf
+spec:
+  selector:
+    matchLabels:
+      app: gaudi-l3bgp-conf
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
+  template:
+    metadata:
+      labels:
+        app: gaudi-l3bgp-conf
+    spec:
+      containers:
+      - env:
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: spec.nodeName
+        image: intel/intel-gaudi-scaleout-conf:devel
+        imagePullPolicy: IfNotPresent
+        name: configurator
+        resources:
+          limits:
+            cpu: 100m
+            memory: 90Mi
+          requests:
+            cpu: 40m
+            memory: 45Mi
+        securityContext:
+          allowPrivilegeEscalation: true
+          readOnlyRootFilesystem: true
+#          seLinuxOptions:
+      nodeSelector:
+        kubernetes.io/arch: amd64
+      terminationGracePeriodSeconds: 10
