@@ -62,18 +62,6 @@ const (
 	layerSelectionL3BGP = "L3BGP"
 )
 
-// fetchObjects returns the required objects for Reconcile.
-func (r *NetworkConfigurationReconciler) fetchExistingDaemonSet(ctx context.Context, req ctrl.Request, log logr.Logger) (*apps.DaemonSetList, error) {
-	var childDaemonSets apps.DaemonSetList
-	if err := r.List(ctx, &childDaemonSets, client.InNamespace(req.Namespace), client.MatchingFields{ownerKey: req.Name}); err != nil {
-		log.Error(err, "unable to list child DaemonSets")
-
-		return nil, err
-	}
-
-	return &childDaemonSets, nil
-}
-
 func updateGaudiScaleOutDaemonSet(ds *apps.DaemonSet, netconf *networkv1alpha1.NetworkConfiguration) {
 	ds.Name = netconf.Name
 	ds.ObjectMeta.Namespace = netconf.Namespace
@@ -170,7 +158,14 @@ func (r *NetworkConfigurationReconciler) updateStatus(rawObj client.Object, ds *
 
 	nc.Status.Errors = []string{}
 
-	if nc.Status.ReadyNodes < nc.Status.Targets {
+	// Update status if there's no State yet.
+	if len(nc.Status.State) == 0 {
+		updated = true
+	}
+
+	if nc.Status.Targets == 0 {
+		nc.Status.State = "No targets"
+	} else if nc.Status.ReadyNodes < nc.Status.Targets {
 		nc.Status.State = "Working on it.."
 	} else {
 		nc.Status.State = "All good"
@@ -193,8 +188,6 @@ func createEmptyObject() client.Object {
 }
 
 func (r *NetworkConfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = log.FromContext(ctx)
-
 	log := log.FromContext(ctx)
 
 	log.Info("Reconcile now.")
@@ -202,20 +195,16 @@ func (r *NetworkConfigurationReconciler) Reconcile(ctx context.Context, req ctrl
 	netConfObj := createEmptyObject()
 
 	if err := r.Get(ctx, req.NamespacedName, netConfObj); err != nil {
-		if apierrors.IsNotFound(err) {
-			log.Info("nothing to do")
+		log.Error(err, "unable to fetch NetworkConfiguration")
 
-			return ctrl.Result{}, nil
-		}
-
-		return ctrl.Result{}, err
+		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
 	// fetch possible existing daemonset
 
-	olderDs, err := r.fetchExistingDaemonSet(ctx, req, log)
-	if err != nil {
-		log.Error(err, "failed to fetch previous daemonsets")
+	var olderDs apps.DaemonSetList
+	if err := r.List(ctx, &olderDs, client.InNamespace(req.Namespace), client.MatchingFields{ownerKey: req.Name}); err != nil {
+		log.Error(err, "unable to list child DaemonSets")
 
 		return ctrl.Result{}, err
 	}

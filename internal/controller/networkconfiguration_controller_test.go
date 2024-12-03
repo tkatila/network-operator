@@ -16,20 +16,25 @@ package controller
 
 import (
 	"context"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"k8s.io/apimachinery/pkg/api/errors"
+	apps "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/intel/intel-network-operator-for-kubernetes/api/v1alpha1"
 	networkv1alpha1 "github.com/intel/intel-network-operator-for-kubernetes/api/v1alpha1"
 )
 
 var _ = Describe("NetworkConfiguration Controller", func() {
+	const (
+		timeout  = time.Second * 10
+		duration = time.Second * 10
+		interval = time.Millisecond * 250
+	)
+
 	Context("When reconciling a resource", func() {
 		const resourceName = "test-resource"
 
@@ -37,50 +42,70 @@ var _ = Describe("NetworkConfiguration Controller", func() {
 
 		typeNamespacedName := types.NamespacedName{
 			Name:      resourceName,
-			Namespace: "default", // TODO(user):Modify as needed
+			Namespace: "default",
 		}
 		networkconfiguration := &networkv1alpha1.NetworkConfiguration{}
 
-		BeforeEach(func() {
-			By("creating the custom resource for the Kind NetworkConfiguration")
-			err := k8sClient.Get(ctx, typeNamespacedName, networkconfiguration)
-			if err != nil && errors.IsNotFound(err) {
-				resource := &networkv1alpha1.NetworkConfiguration{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      resourceName,
-						Namespace: "default",
-					},
-
-					Spec: v1alpha1.NetworkConfigurationSpec{
-						ConfigurationType: "gaudi-so",
-					},
-				}
-				Expect(k8sClient.Create(ctx, resource)).To(Succeed())
-			}
-		})
-
-		AfterEach(func() {
-			// TODO(user): Cleanup logic after each test, like removing the resource instance.
-			resource := &networkv1alpha1.NetworkConfiguration{}
-			err := k8sClient.Get(ctx, typeNamespacedName, resource)
-			Expect(err).NotTo(HaveOccurred())
-
-			By("Cleanup the specific resource instance NetworkConfiguration")
-			Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
-		})
 		It("should successfully reconcile the resource", func() {
-			By("Reconciling the created resource")
-			controllerReconciler := &NetworkConfigurationReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
+			By("creating the custom resource for the Kind NetworkConfiguration")
+			resource := &networkv1alpha1.NetworkConfiguration{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "network.intel.com/v1alpha1",
+					Kind:       "NetworkConfiguration",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      resourceName,
+					Namespace: "default",
+				},
+				Spec: networkv1alpha1.NetworkConfigurationSpec{
+					ConfigurationType: "gaudi-so",
+					GaudiScaleOut: networkv1alpha1.GaudiScaleOutSpec{
+						Layer: "L3BGP",
+					},
+				},
 			}
+			Expect(k8sClient.Create(ctx, resource)).To(Succeed())
 
-			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
-				NamespacedName: typeNamespacedName,
-			})
-			Expect(err).NotTo(HaveOccurred())
-			// TODO(user): Add more specific assertions depending on your controller's reconciliation logic.
-			// Example: If you expect a certain status condition after reconciliation, verify it here.
+			Eventually(func(g Gomega) {
+				g.Expect(k8sClient.Get(ctx, typeNamespacedName, networkconfiguration)).To(Succeed())
+				g.Expect(networkconfiguration.Spec.ConfigurationType).To(BeEquivalentTo("gaudi-so"))
+				g.Expect(networkconfiguration.Status.Targets).To(BeIdenticalTo(int32(0)))
+				g.Expect(networkconfiguration.Status.State).To(BeIdenticalTo("No targets"))
+			}, timeout, interval).Should(Succeed())
+
+			var ds apps.DaemonSet
+
+			Eventually(func(g Gomega) {
+				g.Expect(k8sClient.Get(ctx, typeNamespacedName, &ds)).To(Succeed())
+				g.Expect(ds.ObjectMeta.Name).To(BeEquivalentTo(typeNamespacedName.Name))
+				g.Expect(ds.Spec.Template.Spec.Containers).To(HaveLen(1))
+				g.Expect(ds.Spec.Template.Spec.Containers[0].Args).To(HaveLen(1))
+				g.Expect(ds.Spec.Template.Spec.Containers[0].Args[0]).To(BeEquivalentTo("--layer=L3BGP"))
+			}, timeout, interval).Should(Succeed())
+
+			Expect(k8sClient.Get(ctx, typeNamespacedName, resource)).To(Succeed())
+
+			resource.Spec.GaudiScaleOut.Layer = "L2"
+
+			Expect(k8sClient.Update(ctx, resource)).To(Succeed())
+
+			Eventually(func(g Gomega) {
+				g.Expect(k8sClient.Get(ctx, typeNamespacedName, &ds)).To(Succeed())
+				g.Expect(ds.ObjectMeta.Name).To(BeEquivalentTo(typeNamespacedName.Name))
+				g.Expect(ds.Spec.Template.Spec.Containers).To(HaveLen(1))
+				g.Expect(ds.Spec.Template.Spec.Containers[0].Args).To(HaveLen(1))
+				g.Expect(ds.Spec.Template.Spec.Containers[0].Args[0]).To(BeEquivalentTo("--layer=L2"))
+			}, timeout, interval).Should(Succeed())
+
+			Expect(k8sClient.Delete(ctx, networkconfiguration)).To(Succeed())
+
+			Eventually(func(g Gomega) {
+				g.Expect(k8sClient.Get(ctx, typeNamespacedName, &ds)).To(Not(Succeed()))
+			}, timeout, interval).Should(Not(Succeed()))
+
+			Eventually(func(g Gomega) {
+				g.Expect(k8sClient.Get(ctx, typeNamespacedName, networkconfiguration)).To(Not(Succeed()))
+			}, timeout, interval).Should(Succeed())
 		})
 	})
 })
