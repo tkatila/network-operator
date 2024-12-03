@@ -134,12 +134,7 @@ func (r *NetworkConfiguration) ValidateCreate() (admission.Warnings, error) {
 func (r *NetworkConfiguration) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
 	networkconfigurationlog.Info("validate update", "name", r.Name)
 
-	switch v := old.(type) {
-	case *NetworkConfiguration:
-		return validateSpec(v.Spec)
-	default:
-		return nil, unknownConfigurationError{}
-	}
+	return validateSpec(r.Spec)
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
