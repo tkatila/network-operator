@@ -138,15 +138,12 @@ build: manifests generate fmt vet ## Build manager binary.
 run: manifests generate fmt vet ## Run a controller from your host.
 	go run ./cmd/main.go
 
-# If you wish to build the manager image targeting other platforms you can use the --platform flag.
-# (i.e. docker build --platform linux/arm64). However, you must enable docker buildKit for it.
-# More info: https://docs.docker.com/develop/develop-images/build_enhancements/
-.PHONY: docker-build
-docker-build: ## Build docker image with the manager.
-	$(CONTAINER_TOOL) build -t ${IMG} .
+.PHONY: operator-image
+operator-image:
+	$(CONTAINER_TOOL) build -f build/Dockerfile.operator -t ${IMG} .
 
-.PHONY: docker-push
-docker-push: ## Push docker image with the manager.
+.PHONY: operator-push
+operator-push:
 	$(CONTAINER_TOOL) push ${IMG}
 
 # PLATFORMS defines the target platforms for the manager image be built to provide support to multiple
