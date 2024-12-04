@@ -25,7 +25,7 @@ var _ = Describe("NetworkConfiguration Webhook", func() {
 		It("Should fill in the default value if layer 3 is selected with Gaudi", func() {
 			nc := NetworkConfiguration{}
 
-			nc.Spec.ConfigurationType = "gaudi-so"
+			nc.Spec.ConfigurationType = gaudiScaleOut
 			nc.Spec.GaudiScaleOut.Layer = "L3"
 
 			nc.Default()
@@ -39,7 +39,7 @@ var _ = Describe("NetworkConfiguration Webhook", func() {
 		It("Should deny if there's no nodeSelector", func() {
 			nc := NetworkConfiguration{}
 
-			nc.Spec.ConfigurationType = "gaudi-so"
+			nc.Spec.ConfigurationType = gaudiScaleOut
 
 			Expect(nc.ValidateCreate()).Error().NotTo(BeNil())
 		})
@@ -47,7 +47,7 @@ var _ = Describe("NetworkConfiguration Webhook", func() {
 		It("Should deny if there's a bad IP range", func() {
 			nc := NetworkConfiguration{
 				Spec: NetworkConfigurationSpec{
-					ConfigurationType: "gaudi-so",
+					ConfigurationType: gaudiScaleOut,
 					GaudiScaleOut: GaudiScaleOutSpec{
 						Layer: "L3",
 					},
@@ -69,7 +69,7 @@ var _ = Describe("NetworkConfiguration Webhook", func() {
 		It("Should accept if there's a good IP range", func() {
 			nc := NetworkConfiguration{
 				Spec: NetworkConfigurationSpec{
-					ConfigurationType: "gaudi-so",
+					ConfigurationType: gaudiScaleOut,
 					GaudiScaleOut: GaudiScaleOutSpec{
 						Layer:     "L3",
 						L3IpRange: "10.20.0.0/20",
@@ -86,7 +86,7 @@ var _ = Describe("NetworkConfiguration Webhook", func() {
 		It("Should accept update with good values and fail with bad ones", func() {
 			nc := NetworkConfiguration{
 				Spec: NetworkConfigurationSpec{
-					ConfigurationType: "gaudi-so",
+					ConfigurationType: gaudiScaleOut,
 					GaudiScaleOut: GaudiScaleOutSpec{
 						Layer:     "L3",
 						L3IpRange: "10.20.0.0/20",
@@ -108,7 +108,7 @@ var _ = Describe("NetworkConfiguration Webhook", func() {
 		It("Should always accept delete", func() {
 			nc := NetworkConfiguration{
 				Spec: NetworkConfigurationSpec{
-					ConfigurationType: "gaudi-so",
+					ConfigurationType: gaudiScaleOut,
 					GaudiScaleOut: GaudiScaleOutSpec{
 						Layer:     "L3",
 						L3IpRange: "10.20.0.0/20",

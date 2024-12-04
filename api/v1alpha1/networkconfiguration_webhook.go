@@ -29,6 +29,10 @@ import (
 // log is for logging in this package.
 var networkconfigurationlog = logf.Log.WithName("networkconfiguration-resource")
 
+const (
+	gaudiScaleOut = "gaudi-so"
+)
+
 type ipRangeError struct{}
 
 func (i ipRangeError) Error() string {
@@ -63,7 +67,7 @@ func (r *NetworkConfiguration) Default() {
 	networkconfigurationlog.Info("default", "name", r.Name)
 
 	switch r.Spec.ConfigurationType {
-	case "gaudi-so":
+	case gaudiScaleOut:
 		if len(r.Spec.GaudiScaleOut.Image) == 0 {
 			r.Spec.GaudiScaleOut.Image = "intel/intel-gaudi-scaleout-conf:0.0.1"
 		}
@@ -116,7 +120,7 @@ func validateSpec(s NetworkConfigurationSpec) (admission.Warnings, error) {
 	}
 
 	switch s.ConfigurationType {
-	case "gaudi-so":
+	case gaudiScaleOut:
 		return nil, validateGaudiSoSpec(s.GaudiScaleOut)
 	default:
 		return nil, unknownConfigurationError{}
