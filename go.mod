@@ -5,6 +5,9 @@ go 1.21
 require (
 	github.com/go-logr/logr v1.4.1
 	github.com/google/go-cmp v0.6.0
+	github.com/google/gopacket v1.1.19
+	github.com/mdlayher/ethernet v0.0.0-20220221185849-529eae5b6118
+	github.com/mdlayher/lldp v0.0.0-20150915211757-afd9f83164c5
 	github.com/onsi/ginkgo/v2 v2.14.0
 	github.com/onsi/gomega v1.30.0
 	k8s.io/api v0.29.2
