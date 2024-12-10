@@ -150,7 +150,7 @@ operator-push:
 # TODO: what would be a good image name?
 .PHONY: discover-image
 discover-image:
-	$(CONTAINER_TOOL) build -f build/Dockerfile.linkdiscovery -t intel/intel-network-tools:${TAG} .
+	$(CONTAINER_TOOL) build -f build/Dockerfile.linkdiscovery -t intel/intel-network-linkdiscovery:${TAG} .
 
 # PLATFORMS defines the target platforms for the manager image be built to provide support to multiple
 # architectures. (i.e. make docker-buildx IMG=myregistry/mypoperator:0.0.1). To use this option you need to:

@@ -20,7 +20,6 @@ package controller
 
 import (
 	"context"
-	"fmt"
 	"os"
 
 	apps "k8s.io/api/apps/v1"
@@ -58,7 +57,6 @@ const (
 	gaudiScaleOutSelection = "gaudi-so"
 
 	layerSelectionL2    = "L2"
-	layerSelectionL3    = "L3"
 	layerSelectionL3BGP = "L3BGP"
 )
 
@@ -79,13 +77,10 @@ func updateGaudiScaleOutDaemonSet(ds *apps.DaemonSet, netconf *networkv1alpha1.N
 
 	switch netconf.Spec.GaudiScaleOut.Layer {
 	case layerSelectionL2:
-		fallthrough
-	case layerSelectionL3:
-		fallthrough
+		// TODO: fix with real arguments
+		args = append(args, "--configure=false")
 	case layerSelectionL3BGP:
-		toAdd := fmt.Sprintf("--layer=%s", netconf.Spec.GaudiScaleOut.Layer)
-
-		args = append(args, toAdd)
+		args = append(args, "--configure=true")
 	}
 
 	ds.Spec.Template.Spec.Containers[0].Args = args

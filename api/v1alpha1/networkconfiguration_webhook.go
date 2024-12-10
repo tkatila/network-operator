@@ -69,11 +69,7 @@ func (r *NetworkConfiguration) Default() {
 	switch r.Spec.ConfigurationType {
 	case gaudiScaleOut:
 		if len(r.Spec.GaudiScaleOut.Image) == 0 {
-			r.Spec.GaudiScaleOut.Image = "intel/intel-gaudi-scaleout-conf:0.0.1"
-		}
-
-		if r.Spec.GaudiScaleOut.Layer == "L3" && len(r.Spec.GaudiScaleOut.L3IpRange) == 0 {
-			r.Spec.GaudiScaleOut.L3IpRange = "192.168.10.0/24"
+			r.Spec.GaudiScaleOut.Image = "intel/intel-network-linkdiscovery:latest"
 		}
 	}
 }
@@ -86,11 +82,7 @@ func (r *NetworkConfiguration) Default() {
 var _ webhook.Validator = &NetworkConfiguration{}
 
 func validateGaudiSoSpec(s GaudiScaleOutSpec) error {
-	if s.Layer == "L3" {
-		if len(s.L3IpRange) == 0 {
-			return ipRangeError{}
-		}
-
+	if len(s.L3IpRange) > 0 {
 		if !strings.Contains(s.L3IpRange, "/") {
 			return ipRangeError{}
 		}

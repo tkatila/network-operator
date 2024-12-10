@@ -80,7 +80,7 @@ var _ = Describe("NetworkConfiguration Controller", func() {
 				g.Expect(ds.ObjectMeta.Name).To(BeEquivalentTo(typeNamespacedName.Name))
 				g.Expect(ds.Spec.Template.Spec.Containers).To(HaveLen(1))
 				g.Expect(ds.Spec.Template.Spec.Containers[0].Args).To(HaveLen(1))
-				g.Expect(ds.Spec.Template.Spec.Containers[0].Args[0]).To(BeEquivalentTo("--layer=L3BGP"))
+				g.Expect(ds.Spec.Template.Spec.Containers[0].Args[0]).To(BeEquivalentTo("--configure=true"))
 			}, timeout, interval).Should(Succeed())
 
 			Expect(k8sClient.Get(ctx, typeNamespacedName, resource)).To(Succeed())
@@ -94,7 +94,7 @@ var _ = Describe("NetworkConfiguration Controller", func() {
 				g.Expect(ds.ObjectMeta.Name).To(BeEquivalentTo(typeNamespacedName.Name))
 				g.Expect(ds.Spec.Template.Spec.Containers).To(HaveLen(1))
 				g.Expect(ds.Spec.Template.Spec.Containers[0].Args).To(HaveLen(1))
-				g.Expect(ds.Spec.Template.Spec.Containers[0].Args[0]).To(BeEquivalentTo("--layer=L2"))
+				g.Expect(ds.Spec.Template.Spec.Containers[0].Args[0]).To(BeEquivalentTo("--configure=false"))
 			}, timeout, interval).Should(Succeed())
 
 			Expect(k8sClient.Delete(ctx, networkconfiguration)).To(Succeed())

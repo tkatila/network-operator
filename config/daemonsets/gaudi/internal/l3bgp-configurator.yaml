@@ -1,13 +1,13 @@
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
-  name: gaudi-l3bgp-conf
+  name: intel-network-tools
   labels:
-    app: gaudi-l3bgp-conf
+    app: intel-network-tools
 spec:
   selector:
     matchLabels:
-      app: gaudi-l3bgp-conf
+      app: intel-network-tools
   updateStrategy:
     type: RollingUpdate
     rollingUpdate:
@@ -16,7 +16,7 @@ spec:
   template:
     metadata:
       labels:
-        app: gaudi-l3bgp-conf
+        app: intel-network-tools
     spec:
       containers:
       - env:
@@ -25,7 +25,7 @@ spec:
             fieldRef:
               apiVersion: v1
               fieldPath: spec.nodeName
-        image: intel/intel-gaudi-scaleout-conf:devel
+        image: intel/intel-network-linkdiscovery:latest
         imagePullPolicy: IfNotPresent
         name: configurator
         resources:

@@ -26,12 +26,11 @@ var _ = Describe("NetworkConfiguration Webhook", func() {
 			nc := NetworkConfiguration{}
 
 			nc.Spec.ConfigurationType = gaudiScaleOut
-			nc.Spec.GaudiScaleOut.Layer = "L3"
+			nc.Spec.GaudiScaleOut.Layer = "L2"
 
 			nc.Default()
 
-			Expect(nc.Spec.GaudiScaleOut.Image).To(BeEquivalentTo("intel/intel-gaudi-scaleout-conf:0.0.1"))
-			Expect(nc.Spec.GaudiScaleOut.L3IpRange).To(BeEquivalentTo("192.168.10.0/24"))
+			Expect(nc.Spec.GaudiScaleOut.Image).To(BeEquivalentTo("intel/intel-network-linkdiscovery:latest"))
 		})
 	})
 
@@ -49,7 +48,7 @@ var _ = Describe("NetworkConfiguration Webhook", func() {
 				Spec: NetworkConfigurationSpec{
 					ConfigurationType: gaudiScaleOut,
 					GaudiScaleOut: GaudiScaleOutSpec{
-						Layer: "L3",
+						Layer: "L3BGP",
 					},
 					NodeSelector: map[string]string{
 						"foo": "bar",
@@ -71,7 +70,7 @@ var _ = Describe("NetworkConfiguration Webhook", func() {
 				Spec: NetworkConfigurationSpec{
 					ConfigurationType: gaudiScaleOut,
 					GaudiScaleOut: GaudiScaleOutSpec{
-						Layer:     "L3",
+						Layer:     "L3BGP",
 						L3IpRange: "10.20.0.0/20",
 					},
 					NodeSelector: map[string]string{
@@ -88,7 +87,7 @@ var _ = Describe("NetworkConfiguration Webhook", func() {
 				Spec: NetworkConfigurationSpec{
 					ConfigurationType: gaudiScaleOut,
 					GaudiScaleOut: GaudiScaleOutSpec{
-						Layer:     "L3",
+						Layer:     "L3BGP",
 						L3IpRange: "10.20.0.0/20",
 					},
 					NodeSelector: map[string]string{
@@ -110,7 +109,7 @@ var _ = Describe("NetworkConfiguration Webhook", func() {
 				Spec: NetworkConfigurationSpec{
 					ConfigurationType: gaudiScaleOut,
 					GaudiScaleOut: GaudiScaleOutSpec{
-						Layer:     "L3",
+						Layer:     "L3BGP",
 						L3IpRange: "10.20.0.0/20",
 					},
 					NodeSelector: map[string]string{

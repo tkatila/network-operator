@@ -63,10 +63,9 @@ spec:
                     type: string
                   layer:
                     description: 'Layer where the configuration should occur. Possible
-                      options: L2, L3 and L3BGP.'
+                      options: L2 and L3BGP.'
                     enum:
                     - L2
-                    - L3
                     - L3BGP
                     type: string
                   pullPolicy:
