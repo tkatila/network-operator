@@ -61,8 +61,9 @@ spec:
       - command:
         - /manager
         args:
-        - --leader-elect
-        image: intel.com/intel-kubernetes-network-operator:latest
+          - --leader-elect
+          - --health-probe-bind-address=:8081
+        image: intel/intel-network-operator:0.0.1
         name: manager
         securityContext:
           allowPrivilegeEscalation: false
