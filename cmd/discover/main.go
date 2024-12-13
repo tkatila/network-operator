@@ -90,6 +90,9 @@ func getNetworks() []string {
 
 		netdevicepattern := filepath.Join(devicesymlinktarget, netDevicePattern)
 		netdevices, err := filepath.Glob(netdevicepattern)
+		if err != nil {
+			fmt.Printf("Could not find network device files: %v", err)
+		}
 		for _, n := range netdevices {
 			name := filepath.Base(n)
 			habanaNetDevices = append(habanaNetDevices, name)
@@ -135,18 +138,18 @@ func startLLDP(ctx context.Context, result discoveryResult, lldpResultChan chan 
 	lldpClient := lldp.NewClient(ctx, *iface)
 	go func() {
 		if err := lldpClient.Start(log, lldpChan); err != nil {
-			result.err = err
-			lldpResultChan <- result
+			lldpChan <- lldp.DiscoveryResult{}
 		}
 	}()
 
-	select {
-	case result.lldp = <-lldpChan:
-		lldpResultChan <- result
-	}
+	result.lldp = <-lldpChan
+	lldpResultChan <- result
+
 }
 
-func waitResults(ctx context.Context, timeout time.Duration, networkConfigs map[string]*networkConfiguration, lldpResultChan chan discoveryResult) {
+func waitResults(ctx context.Context, timeout time.Duration, networkConfigs map[string]*networkConfiguration,
+	lldpResultChan chan discoveryResult) {
+
 	timeoutctx, cancelctx := context.WithTimeout(ctx, timeout)
 	defer cancelctx()
 
@@ -182,12 +185,14 @@ func selectMask30L3Address(nwconfig *networkConfiguration) (*net.IP, *net.IP, er
 
 	substrings := strings.Split(nwconfig.portDescription, " ")
 	if len(substrings) < 2 {
-		return nil, nil, fmt.Errorf("interface '%s' could not split string '%s'", nwconfig.link.Attrs().Name, nwconfig.portDescription)
+		return nil, nil, fmt.Errorf("interface '%s' could not split string '%s'",
+			nwconfig.link.Attrs().Name, nwconfig.portDescription)
 	}
 
 	peeraddr, peerNetwork, err = net.ParseCIDR(substrings[1])
 	if err != nil {
-		return nil, nil, fmt.Errorf("interface '%s' could not parse '%s': %v", nwconfig.link.Attrs().Name, nwconfig.portDescription, err)
+		return nil, nil, fmt.Errorf("interface '%s' could not parse '%s': %v",
+			nwconfig.link.Attrs().Name, nwconfig.portDescription, err)
 	}
 
 	mask, _ := peerNetwork.Mask.Size()
@@ -327,9 +332,7 @@ func cmdRun(cmd *cobra.Command, args []string) error {
 	ifacenames := getNetworks()
 	extrainterfaces, err := cmd.Flags().GetString("interfaces")
 	if err == nil && len(extrainterfaces) > 0 {
-		for _, iface := range strings.Split(extrainterfaces, ",") {
-			ifacenames = append(ifacenames, iface)
-		}
+		ifacenames = append(ifacenames, strings.Split(extrainterfaces, ",")...)
 	}
 
 	if len(ifacenames) == 0 {
