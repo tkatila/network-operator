@@ -50,6 +50,7 @@ type networkConfiguration struct {
 	portDescription string
 	lldpPeer        *net.IP
 	localAddr       *net.IP
+	peerHWAddr      *net.HardwareAddr
 }
 
 var sysfsRoot string = ""
@@ -158,9 +159,13 @@ func waitResults(ctx context.Context, timeout time.Duration, networkConfigs map[
 		case result := <-lldpResultChan:
 			if result.err != nil {
 				fmt.Printf("%s replied with error: %v\n", result.ifname, result.err)
+				continue
 			} else {
 				if nwconfig, exists := networkConfigs[result.ifname]; exists {
 					nwconfig.portDescription = result.lldp.PortDescription
+
+					var hwaddr net.HardwareAddr = result.lldp.PeerMAC
+					nwconfig.peerHWAddr = &hwaddr
 				}
 			}
 		}
@@ -217,6 +222,12 @@ func printResult(nwconfig *networkConfiguration) {
 	fmt.Printf("\n")
 
 	addr := "none"
+	if nwconfig.peerHWAddr != nil {
+		addr = nwconfig.peerHWAddr.String()
+	}
+	fmt.Printf("\tPeer MAC address: %s\n", addr)
+
+	addr = "none"
 	if nwconfig.lldpPeer != nil {
 		addr = nwconfig.lldpPeer.String()
 	}
@@ -308,6 +319,11 @@ func cmdRun(cmd *cobra.Command, args []string) error {
 
 	configure, _ := cmd.Flags().GetBool("configure")
 
+	gaudinetfile, err := cmd.Flags().GetString("gaudinet")
+	if err != nil {
+		return fmt.Errorf("Cannot parse gaudinet argument")
+	}
+
 	ifacenames := getNetworks()
 	extrainterfaces, err := cmd.Flags().GetString("interfaces")
 	if err == nil && len(extrainterfaces) > 0 {
@@ -347,6 +363,13 @@ func cmdRun(cmd *cobra.Command, args []string) error {
 
 	foundpeers := examineResults(networkConfigs)
 
+	if gaudinetfile != "" {
+		err := WriteGaudiNet(gaudinetfile, networkConfigs)
+		if err != nil {
+			fmt.Printf("Error: %v\n", err)
+		}
+	}
+
 	if configure && foundpeers {
 		num, total := configureInterfaces(networkConfigs)
 		fmt.Printf("Configured %d of %d interfaces\n", num, total)
@@ -376,6 +399,7 @@ func setupCmd() (*cobra.Command, error) {
 	cmd.Flags().BoolP("configure", "", false, "Configure network discovered with LLDP")
 	cmd.Flags().StringP("interfaces", "", "", "Comma separated list of additional network interfaces")
 	cmd.Flags().StringP("wait", "", "30s", "Time to wait for LLDP packets")
+	cmd.Flags().StringP("gaudinet", "", "", "gaudinet file path")
 
 	return cmd, nil
 }

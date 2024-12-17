@@ -48,6 +48,7 @@ type DiscoveryResult struct {
 	SysName         string
 	SysDescription  string
 	PortDescription string
+	PeerMAC         []byte
 }
 
 // NewClient creates a new lldp client.
@@ -99,23 +100,39 @@ func (l *Client) Start(log *slog.Logger, resultChan chan<- DiscoveryResult) erro
 			if packet.LinkLayer().LayerType() != layers.LayerTypeEthernet {
 				continue
 			}
+			dr := DiscoveryResult{}
 			for _, layer := range packet.Layers() {
-				if layer.LayerType() != layers.LayerTypeLinkLayerDiscoveryInfo {
-					continue
-				}
-				info, ok := layer.(*layers.LinkLayerDiscoveryInfo)
-				if !ok {
+				if layer.LayerType() == layers.LayerTypeLinkLayerDiscovery {
+					info, ok := layer.(*layers.LinkLayerDiscovery)
+					if !ok {
+						continue
+					}
+
+					if info.ChassisID.Subtype == layers.LLDPChassisIDSubTypeMACAddr {
+						dr.PeerMAC = info.ChassisID.ID
+					}
+
+					if info.PortID.Subtype == layers.LLDPPortIDSubtypeMACAddr {
+						dr.PeerMAC = info.PortID.ID
+					}
+
 					continue
 				}
 
-				dr := DiscoveryResult{
-					SysName:         info.SysName,
-					SysDescription:  info.SysDescription,
-					PortDescription: info.PortDescription,
+				if layer.LayerType() == layers.LayerTypeLinkLayerDiscoveryInfo {
+					info, ok := layer.(*layers.LinkLayerDiscoveryInfo)
+					if !ok {
+						continue
+					}
+					dr.SysName = info.SysName
+					dr.SysDescription = info.SysDescription
+					dr.PortDescription = info.PortDescription
 				}
-				resultChan <- dr
-				return nil
+
 			}
+			resultChan <- dr
+			return nil
+
 		case <-l.ctx.Done():
 			log.Debug("context done, terminating lldp discovery")
 			return nil
