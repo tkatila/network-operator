@@ -16,6 +16,10 @@ issues:
       linters:
         - dupl
         - lll
+    - path: '(.+)_test\.go'
+      linters:
+        - errcheck
+
 linters:
   disable-all: true
   enable:
