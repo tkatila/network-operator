@@ -16,11 +16,11 @@ RUN go mod download
 RUN apt-get update && apt-get install -y --no-install-recommends libpcap0.8-dev
 
 # Copy the go source
-COPY cmd/discover/main.go cmd/discover/main.go
+COPY cmd/discover/*.go cmd/discover/
 COPY pkg/ pkg/
 
 # Build
-RUN CGO_ENABLED=1 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -a -o discover cmd/discover/main.go
+RUN CGO_ENABLED=1 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -a -o discover cmd/discover/main.go cmd/discover/gaudinet.go
 
 # TODO: consider using some other base image with required libraries copied into it.
 FROM debian:stable-slim
