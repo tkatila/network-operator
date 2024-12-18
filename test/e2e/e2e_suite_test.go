@@ -27,6 +27,7 @@ import (
 // Run e2e tests using the Ginkgo runner.
 func TestE2E(t *testing.T) {
 	RegisterFailHandler(Fail)
-	fmt.Fprintf(GinkgoWriter, "Starting intel-kubernetes-network-operator suite\n")
+	//nolint:errcheck
+	fmt.Fprintf(GinkgoWriter, "Starting intel-network-operator suite\n")
 	RunSpecs(t, "e2e suite")
 }

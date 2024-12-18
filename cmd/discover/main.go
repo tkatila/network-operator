@@ -36,6 +36,8 @@ const (
 	driverPath       = "bus/pci/drivers/habanalabs/"
 	pciDevicePattern = "????:??:??.?"
 	netDevicePattern = "net/*"
+
+	noAddress = "none"
 )
 
 type discoveryResult struct {
@@ -226,18 +228,18 @@ func printResult(nwconfig *networkConfiguration) {
 	}
 	fmt.Printf("\n")
 
-	addr := "none"
+	addr := noAddress
 	if nwconfig.peerHWAddr != nil {
 		addr = nwconfig.peerHWAddr.String()
 	}
 	fmt.Printf("\tPeer MAC address: %s\n", addr)
 
-	addr = "none"
+	addr = noAddress
 	if nwconfig.lldpPeer != nil {
 		addr = nwconfig.lldpPeer.String()
 	}
 	fmt.Printf("\tLLDP address: %s\n", addr)
-	addr = "none"
+	addr = noAddress
 	if nwconfig.localAddr != nil {
 		addr = nwconfig.localAddr.String()
 	}
@@ -392,6 +394,8 @@ func cmdRun(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+// error is always nil, but keep the logic incase we want to return it later on.
+// nolint: unparam
 func setupCmd() (*cobra.Command, error) {
 	cmd := &cobra.Command{
 		Use:   "discover",
