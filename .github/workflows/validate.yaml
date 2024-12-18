@@ -1,0 +1,59 @@
+name: validate
+on:
+  pull_request:
+    branches:
+      - 'main'
+
+permissions:
+  pull-requests: read # for golangci/golangci-lint-action to fetch pull requests
+  contents: read
+
+env:
+  LOCALBIN: /runners/tools/bin
+
+jobs:
+  golangci:
+    name: Run lint
+    runs-on: "self-hosted"
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+        with:
+          clean: true
+      - uses: actions/setup-go@3041bf56c941b39c61721a86cd11f3bb1338122a # v5
+        with:
+          go-version-file: go.mod
+          check-latest: true
+          cache: false
+      - run: |
+          make lint
+  build:
+    name: Build all
+    runs-on: "self-hosted"
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+        with:
+          clean: true
+      - uses: actions/setup-go@3041bf56c941b39c61721a86cd11f3bb1338122a # v5
+        with:
+          go-version-file: go.mod
+          check-latest: true
+          cache: false
+      - run: make build
+      - run: make operator-image
+      - run: make discover-image
+  tests:
+    name: Run tests
+    runs-on: "self-hosted"
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+        with:
+          clean: true
+      - uses: actions/setup-go@3041bf56c941b39c61721a86cd11f3bb1338122a # v5
+        with:
+          go-version-file: go.mod
+          check-latest: true
+          cache: false
+      - name: Run tests
+        run: |
+          make envtest
+          make test
