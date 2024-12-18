@@ -36,6 +36,12 @@ import (
 	"github.com/google/gopacket/pcap"
 )
 
+const (
+	// Make use of an LLDP EtherType.
+	// https://www.iana.org/assignments/ieee-802-numbers/ieee-802-numbers.xhtml
+	etherType = 0x88cc
+)
+
 // Client consumes lldp messages.
 type Client struct {
 	interfaceName string
@@ -45,6 +51,7 @@ type Client struct {
 
 // DiscoveryResult holds optional TLV SysName and SysDescription fields of a real lldp frame.
 type DiscoveryResult struct {
+	interfaceName   string
 	SysName         string
 	SysDescription  string
 	PortDescription string
@@ -100,7 +107,7 @@ func (l *Client) Start(log *slog.Logger, resultChan chan<- DiscoveryResult) erro
 			if packet.LinkLayer().LayerType() != layers.LayerTypeEthernet {
 				continue
 			}
-			dr := DiscoveryResult{}
+			dr := DiscoveryResult{interfaceName: l.interfaceName}
 			for _, layer := range packet.Layers() {
 				if layer.LayerType() == layers.LayerTypeLinkLayerDiscovery {
 					info, ok := layer.(*layers.LinkLayerDiscovery)
