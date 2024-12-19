@@ -27,8 +27,6 @@ package lldp
 import (
 	"context"
 	"fmt"
-	"log/slog"
-	"net"
 	"time"
 
 	"github.com/google/gopacket"
@@ -44,14 +42,14 @@ const (
 
 // Client consumes lldp messages.
 type Client struct {
-	interfaceName string
+	InterfaceName string
 	handle        *pcap.Handle
 	ctx           context.Context
 }
 
 // DiscoveryResult holds optional TLV SysName and SysDescription fields of a real lldp frame.
 type DiscoveryResult struct {
-	interfaceName   string
+	InterfaceName   string
 	SysName         string
 	SysDescription  string
 	PortDescription string
@@ -59,9 +57,9 @@ type DiscoveryResult struct {
 }
 
 // NewClient creates a new lldp client.
-func NewClient(ctx context.Context, iface net.Interface) *Client {
+func NewClient(ctx context.Context, ifacename string) *Client {
 	return &Client{
-		interfaceName: iface.Name,
+		InterfaceName: ifacename,
 		ctx:           ctx,
 	}
 }
@@ -69,27 +67,24 @@ func NewClient(ctx context.Context, iface net.Interface) *Client {
 // Start searches on the configured interface for lldp packages and
 // pushes the optional TLV SysName and SysDescription fields of each
 // found lldp package into the given channel.
-func (l *Client) Start(log *slog.Logger, resultChan chan<- DiscoveryResult) error {
-	defer func() {
-		log.Warn("terminating lldp discovery for interface", "interface", l.interfaceName)
-		l.Close()
-	}()
+func (l *Client) Start(resultChan chan<- DiscoveryResult) error {
+	defer l.Close()
 
 	var packetSource *gopacket.PacketSource
 	for {
 		// Recreate interface handle if not exists
 		if l.handle == nil {
 			var err error
-			l.handle, err = pcap.OpenLive(l.interfaceName, 65536, true, 5*time.Second)
+			l.handle, err = pcap.OpenLive(l.InterfaceName, 65536, true, 5*time.Second)
 			if err != nil {
-				return fmt.Errorf("unable to open interface:%s in promiscuous mode: %w", l.interfaceName, err)
+				return fmt.Errorf("unable to open interface:%s in promiscuous mode: %w", l.InterfaceName, err)
 			}
 
 			// filter only lldp packages
 			bpfFilter := fmt.Sprintf("ether proto %#x", etherType)
 			err = l.handle.SetBPFFilter(bpfFilter)
 			if err != nil {
-				return fmt.Errorf("unable to filter lldp ethernet traffic %#x on interface:%s %w", etherType, l.interfaceName, err)
+				return fmt.Errorf("unable to filter lldp ethernet traffic %#x on interface:%s %w", etherType, l.InterfaceName, err)
 			}
 
 			packetSource = gopacket.NewPacketSource(l.handle, l.handle.LinkType())
@@ -100,14 +95,13 @@ func (l *Client) Start(log *slog.Logger, resultChan chan<- DiscoveryResult) erro
 			if !ok {
 				l.handle.Close()
 				l.handle = nil
-				log.Debug("EOF error for the handle")
 				continue
 			}
 
 			if packet.LinkLayer().LayerType() != layers.LayerTypeEthernet {
 				continue
 			}
-			dr := DiscoveryResult{interfaceName: l.interfaceName}
+			dr := DiscoveryResult{InterfaceName: l.InterfaceName}
 			for _, layer := range packet.Layers() {
 				if layer.LayerType() == layers.LayerTypeLinkLayerDiscovery {
 					info, ok := layer.(*layers.LinkLayerDiscovery)
@@ -141,7 +135,6 @@ func (l *Client) Start(log *slog.Logger, resultChan chan<- DiscoveryResult) erro
 			return nil
 
 		case <-l.ctx.Done():
-			log.Debug("context done, terminating lldp discovery")
 			return nil
 		}
 	}

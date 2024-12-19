@@ -20,7 +20,7 @@ COPY cmd/discover/*.go cmd/discover/
 COPY pkg/ pkg/
 
 # Build
-RUN CGO_ENABLED=1 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -a -o discover cmd/discover/main.go cmd/discover/gaudinet.go
+RUN CGO_ENABLED=1 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -a -o discover cmd/discover/main.go cmd/discover/gaudinet.go cmd/discover/network.go
 
 # TODO: consider using some other base image with required libraries copied into it.
 FROM debian:stable-slim
