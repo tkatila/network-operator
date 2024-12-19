@@ -18,6 +18,7 @@ spec:
       labels:
         app: intel-network-tools
     spec:
+      hostNetwork: true
       containers:
       - env:
         - name: NODE_NAME
@@ -38,7 +39,11 @@ spec:
         securityContext:
           allowPrivilegeEscalation: true
           readOnlyRootFilesystem: true
-#          seLinuxOptions:
+          capabilities:
+            add:
+              - NET_ADMIN
+              - NET_RAW
+              - SYS_CHROOT
       nodeSelector:
         kubernetes.io/arch: amd64
       terminationGracePeriodSeconds: 10

@@ -21,7 +21,7 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-//go:embed gaudi/internal/l3bgp-configurator.yaml
+//go:embed gaudi/internal/linkdiscovery.yaml
 var contentGaudiL3BGPConf []byte
 
 func GaudiL3BGPDaemonSet() *apps.DaemonSet {
