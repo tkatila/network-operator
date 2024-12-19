@@ -233,7 +233,9 @@ func (r *NetworkConfigurationReconciler) Reconcile(ctx context.Context, req ctrl
 	netConfObj := createEmptyObject()
 
 	if err := r.Get(ctx, req.NamespacedName, netConfObj); err != nil {
-		log.Error(err, "unable to fetch NetworkConfiguration")
+		if client.IgnoreNotFound(err) != nil {
+			log.Error(err, "unable to fetch NetworkConfiguration")
+		}
 
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
