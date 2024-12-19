@@ -61,6 +61,7 @@ var _ = Describe("NetworkConfiguration Controller", func() {
 					ConfigurationType: "gaudi-so",
 					GaudiScaleOut: networkv1alpha1.GaudiScaleOutSpec{
 						Layer: "L3BGP",
+						Image: "intel/my-linkdiscovery:latest",
 					},
 				},
 			}
@@ -79,8 +80,14 @@ var _ = Describe("NetworkConfiguration Controller", func() {
 				g.Expect(k8sClient.Get(ctx, typeNamespacedName, &ds)).To(Succeed())
 				g.Expect(ds.ObjectMeta.Name).To(BeEquivalentTo(typeNamespacedName.Name))
 				g.Expect(ds.Spec.Template.Spec.Containers).To(HaveLen(1))
-				g.Expect(ds.Spec.Template.Spec.Containers[0].Args).To(HaveLen(1))
+				g.Expect(ds.Spec.Template.Spec.Containers[0].Image).To(BeEquivalentTo("intel/my-linkdiscovery:latest"))
+				g.Expect(ds.Spec.Template.Spec.Containers[0].Args).To(HaveLen(2))
 				g.Expect(ds.Spec.Template.Spec.Containers[0].Args[0]).To(BeEquivalentTo("--configure=true"))
+				g.Expect(ds.Spec.Template.Spec.Containers[0].Args[1]).To(BeEquivalentTo("--gaudinet=/host/etc/gaudinet.json"))
+				g.Expect(ds.Spec.Template.Spec.Volumes).To(HaveLen(1))
+				g.Expect(ds.Spec.Template.Spec.Volumes[0].Name).To(BeEquivalentTo("gaudinetpath"))
+				g.Expect(ds.Spec.Template.Spec.Containers[0].VolumeMounts).To(HaveLen(1))
+				g.Expect(ds.Spec.Template.Spec.Containers[0].VolumeMounts[0].Name).To(BeEquivalentTo("gaudinetpath"))
 			}, timeout, interval).Should(Succeed())
 
 			Expect(k8sClient.Get(ctx, typeNamespacedName, resource)).To(Succeed())

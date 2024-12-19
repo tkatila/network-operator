@@ -20,6 +20,7 @@ package controller
 
 import (
 	"context"
+	"fmt"
 	"os"
 
 	apps "k8s.io/api/apps/v1"
@@ -58,7 +59,44 @@ const (
 
 	layerSelectionL2    = "L2"
 	layerSelectionL3BGP = "L3BGP"
+
+	gaudinetPathHost      = "/etc/gaudinet.json"
+	gaudinetPathContainer = "/host" + gaudinetPathHost
 )
+
+func addHostVolume(ds *apps.DaemonSet, volumeType v1.HostPathType, volumeName, hostPath, containerPath string) {
+	volumeAdd := v1.Volume{
+		Name: volumeName,
+		VolumeSource: v1.VolumeSource{
+			HostPath: &v1.HostPathVolumeSource{
+				Path: hostPath,
+				Type: &volumeType,
+			},
+		},
+	}
+
+	mountAdd := v1.VolumeMount{
+		Name:      volumeName,
+		ReadOnly:  false,
+		MountPath: containerPath,
+	}
+
+	if len(ds.Spec.Template.Spec.Volumes) == 0 {
+		ds.Spec.Template.Spec.Volumes = []v1.Volume{volumeAdd}
+	} else {
+		ds.Spec.Template.Spec.Volumes = append(ds.Spec.Template.Spec.Volumes, volumeAdd)
+	}
+
+	if len(ds.Spec.Template.Spec.Containers) > 0 {
+		c := &ds.Spec.Template.Spec.Containers[0]
+
+		if len(c.VolumeMounts) == 0 {
+			c.VolumeMounts = []v1.VolumeMount{mountAdd}
+		} else {
+			c.VolumeMounts = append(c.VolumeMounts, mountAdd)
+		}
+	}
+}
 
 func updateGaudiScaleOutDaemonSet(ds *apps.DaemonSet, netconf *networkv1alpha1.NetworkConfiguration) {
 	ds.Name = netconf.Name
@@ -75,12 +113,17 @@ func updateGaudiScaleOutDaemonSet(ds *apps.DaemonSet, netconf *networkv1alpha1.N
 
 	args := []string{}
 
+	ds.Spec.Template.Spec.Volumes = []v1.Volume{}
+	ds.Spec.Template.Spec.Containers[0].VolumeMounts = []v1.VolumeMount{}
+
 	switch netconf.Spec.GaudiScaleOut.Layer {
 	case layerSelectionL2:
 		// TODO: fix with real arguments
 		args = append(args, "--configure=false")
 	case layerSelectionL3BGP:
-		args = append(args, "--configure=true")
+		args = append(args, "--configure=true", fmt.Sprintf("--gaudinet=%s", gaudinetPathContainer))
+
+		addHostVolume(ds, v1.HostPathFileOrCreate, "gaudinetpath", gaudinetPathHost, gaudinetPathContainer)
 	}
 
 	ds.Spec.Template.Spec.Containers[0].Args = args
