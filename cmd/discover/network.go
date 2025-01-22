@@ -34,6 +34,18 @@ const (
 	noAddress = "none"
 )
 
+type networkLinkFn struct {
+	LinkByName func(name string) (netlink.Link, error)
+	AddrList   func(link netlink.Link, family int) ([]netlink.Addr, error)
+	AddrAdd    func(link netlink.Link, addr *netlink.Addr) error
+}
+
+var networkLink = networkLinkFn{
+	LinkByName: netlink.LinkByName,
+	AddrList:   netlink.AddrList,
+	AddrAdd:    netlink.AddrAdd,
+}
+
 type networkConfiguration struct {
 	link            netlink.Link
 	origState       netlink.LinkOperState
@@ -43,13 +55,8 @@ type networkConfiguration struct {
 	peerHWAddr      *net.HardwareAddr
 }
 
-var sysfsRoot string = ""
-
 func getSysfsRoot() string {
-	if sysfsRoot != "" {
-		return sysfsRoot
-	}
-	sysfsRoot = os.Getenv("SYSFS_ROOT")
+	sysfsRoot := os.Getenv("SYSFS_ROOT")
 	if sysfsRoot == "" {
 		sysfsRoot = "/sys/"
 	}
@@ -97,7 +104,7 @@ func getNetworkConfigs(ifacenames []string) map[string]*networkConfiguration {
 	links := make(map[string]*networkConfiguration)
 
 	for _, name := range ifacenames {
-		link, err := netlink.LinkByName(name)
+		link, err := networkLink.LinkByName(name)
 		if err != nil {
 			fmt.Printf("Link '%s' not found: %v\n", name, err)
 			continue
@@ -148,7 +155,7 @@ func printResult(nwconfig *networkConfiguration) {
 	fmt.Printf("Interface '%s' %s:\n", nwconfig.link.Attrs().Name, nwconfig.link.Attrs().OperState.String())
 
 	fmt.Printf("\tConfigured addresses: ")
-	addrs, err := netlink.AddrList(nwconfig.link, netlink.FAMILY_ALL)
+	addrs, err := networkLink.AddrList(nwconfig.link, netlink.FAMILY_ALL)
 	if len(addrs) == 0 || err != nil {
 		fmt.Printf("no addresses")
 	} else {
@@ -207,7 +214,7 @@ func configureInterfaces(networkConfigs map[string]*networkConfiguration) (int, 
 			continue
 		}
 
-		addrs, err := netlink.AddrList(nwconfig.link, netlink.FAMILY_V4)
+		addrs, err := networkLink.AddrList(nwconfig.link, netlink.FAMILY_V4)
 		ifname := nwconfig.link.Attrs().Name
 		if err != nil {
 			fmt.Printf("Could not get addresses for link '%s': %v\n", ifname, err)
@@ -225,7 +232,7 @@ func configureInterfaces(networkConfigs map[string]*networkConfiguration) (int, 
 					Mask: net.CIDRMask(30, 32),
 				},
 			}
-			if err := netlink.AddrAdd(nwconfig.link, newlinkaddr); err != nil {
+			if err := networkLink.AddrAdd(nwconfig.link, newlinkaddr); err != nil {
 				fmt.Printf("Could not configure address '%s' to interface '%s': %v\n", nwconfig.localAddr.String(), ifname, err)
 				continue
 			}
