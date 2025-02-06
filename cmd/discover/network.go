@@ -223,7 +223,8 @@ func configureInterfaces(networkConfigs map[string]*networkConfiguration) (int, 
 
 		for _, addr := range addrs {
 			if nwconfig.localAddr.Equal(addr.IPNet.IP) {
-				fmt.Printf("Interface '%s' already configured '%s'\n", ifname, addr.IPNet.String())
+				fmt.Printf("Interface '%s' already configured '%s'\n",
+					ifname, addr.IPNet.String())
 				continue
 			}
 			newlinkaddr := &netlink.Addr{
@@ -233,12 +234,14 @@ func configureInterfaces(networkConfigs map[string]*networkConfiguration) (int, 
 				},
 			}
 			if err := networkLink.AddrAdd(nwconfig.link, newlinkaddr); err != nil {
-				fmt.Printf("Could not configure address '%s' to interface '%s': %v\n", nwconfig.localAddr.String(), ifname, err)
+				fmt.Printf("Could not configure address '%s' to interface '%s': %v\n",
+					nwconfig.localAddr.String(), ifname, err)
 				continue
 			}
 			configured++
 
-			fmt.Printf("Configured address '%s' to interface '%s'\n", nwconfig.localAddr.String(), ifname)
+			fmt.Printf("Configured address '%s' to interface '%s'\n",
+				nwconfig.localAddr.String(), ifname)
 		}
 	}
 

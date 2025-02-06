@@ -25,23 +25,11 @@ import (
 	"github.com/vishvananda/netlink"
 )
 
-type FakeLink struct {
-	fakeAttrs netlink.LinkAttrs
-}
-
-func (l *FakeLink) Attrs() *netlink.LinkAttrs {
-	return &l.fakeAttrs
-}
-
-func (l *FakeLink) Type() string {
-	return ""
-}
-
 func fakenetworkconfigs() (map[string]*networkConfiguration, string) {
 	lldpPeer := net.IPv4(10, 120, 0, 2)
 	localAddr := net.IPv4(10, 120, 0, 1)
 	networkconfig := networkConfiguration{
-		link: &FakeLink{
+		link: &fakeLink{
 			fakeAttrs: netlink.LinkAttrs{
 				HardwareAddr: net.HardwareAddr{0x01, 0x02, 0x03, 0x04, 0x05, 0x06},
 			},
