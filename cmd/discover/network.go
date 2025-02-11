@@ -22,6 +22,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/vishvananda/netlink"
 )
@@ -35,20 +36,23 @@ const (
 )
 
 type networkLinkFn struct {
-	LinkByName func(name string) (netlink.Link, error)
-	AddrList   func(link netlink.Link, family int) ([]netlink.Addr, error)
-	AddrAdd    func(link netlink.Link, addr *netlink.Addr) error
+	LinkByName    func(name string) (netlink.Link, error)
+	AddrList      func(link netlink.Link, family int) ([]netlink.Addr, error)
+	AddrAdd       func(link netlink.Link, addr *netlink.Addr) error
+	LinkSubscribe func(ch chan<- netlink.LinkUpdate, done <-chan struct{}) error
 }
 
 var networkLink = networkLinkFn{
-	LinkByName: netlink.LinkByName,
-	AddrList:   netlink.AddrList,
-	AddrAdd:    netlink.AddrAdd,
+	LinkByName:    netlink.LinkByName,
+	AddrList:      netlink.AddrList,
+	AddrAdd:       netlink.AddrAdd,
+	LinkSubscribe: netlink.LinkSubscribe,
 }
 
 type networkConfiguration struct {
 	link            netlink.Link
-	origState       netlink.LinkOperState
+	origState       net.Flags
+	expectResponse  bool
 	portDescription string
 	lldpPeer        *net.IP
 	localAddr       *net.IP
@@ -111,7 +115,8 @@ func getNetworkConfigs(ifacenames []string) map[string]*networkConfiguration {
 		}
 
 		links[name] = &networkConfiguration{
-			link: link,
+			link:      link,
+			origState: link.Attrs().Flags,
 		}
 	}
 
@@ -151,43 +156,47 @@ func selectMask30L3Address(nwconfig *networkConfiguration) (*net.IP, *net.IP, er
 	return &peeraddr, &localaddr, err
 }
 
-func printResult(nwconfig *networkConfiguration) {
-	fmt.Printf("Interface '%s' %s:\n", nwconfig.link.Attrs().Name, nwconfig.link.Attrs().OperState.String())
+func printResults(config *cmdConfig, networkConfigs map[string]*networkConfiguration) {
+	for _, nwconfig := range networkConfigs {
+		fmt.Printf("Interface '%s' %s:\n", nwconfig.link.Attrs().Name, nwconfig.link.Attrs().Flags)
 
-	fmt.Printf("\tConfigured addresses: ")
-	addrs, err := networkLink.AddrList(nwconfig.link, netlink.FAMILY_ALL)
-	if len(addrs) == 0 || err != nil {
-		fmt.Printf("no addresses")
-	} else {
-		for _, addr := range addrs {
-			fmt.Printf("%s", addr.IPNet.String())
-			if nwconfig.localAddr != nil && addr.IPNet.IP.Equal(*nwconfig.localAddr) {
-				fmt.Printf("(matches lldp)")
+		fmt.Printf("\tConfigured addresses: ")
+		addrs, err := networkLink.AddrList(nwconfig.link, netlink.FAMILY_ALL)
+		if len(addrs) == 0 || err != nil {
+			fmt.Printf("no addresses")
+		} else {
+			for _, addr := range addrs {
+				fmt.Printf("%s", addr.IPNet.String())
+				if nwconfig.localAddr != nil && addr.IPNet.IP.Equal(*nwconfig.localAddr) {
+					fmt.Printf("(matches lldp)")
+				}
+				fmt.Printf(" ")
 			}
-			fmt.Printf(" ")
+		}
+		fmt.Printf("\n")
+
+		if config.mode == L3 {
+			addr := noAddress
+			if nwconfig.peerHWAddr != nil {
+				addr = nwconfig.peerHWAddr.String()
+			}
+			fmt.Printf("\tPeer MAC address: %s\n", addr)
+
+			addr = noAddress
+			if nwconfig.lldpPeer != nil {
+				addr = nwconfig.lldpPeer.String()
+			}
+			fmt.Printf("\tLLDP address: %s\n", addr)
+			addr = noAddress
+			if nwconfig.localAddr != nil {
+				addr = nwconfig.localAddr.String()
+			}
+			fmt.Printf("\tLLDP /30 address to add: %s\n", addr)
 		}
 	}
-	fmt.Printf("\n")
-
-	addr := noAddress
-	if nwconfig.peerHWAddr != nil {
-		addr = nwconfig.peerHWAddr.String()
-	}
-	fmt.Printf("\tPeer MAC address: %s\n", addr)
-
-	addr = noAddress
-	if nwconfig.lldpPeer != nil {
-		addr = nwconfig.lldpPeer.String()
-	}
-	fmt.Printf("\tLLDP address: %s\n", addr)
-	addr = noAddress
-	if nwconfig.localAddr != nil {
-		addr = nwconfig.localAddr.String()
-	}
-	fmt.Printf("\tLLDP /30 address to add: %s\n", addr)
 }
 
-func examineResults(networkConfigs map[string]*networkConfiguration) bool {
+func lldpResults(networkConfigs map[string]*networkConfiguration) bool {
 	foundpeers := false
 
 	for _, nwconfig := range networkConfigs {
@@ -197,11 +206,87 @@ func examineResults(networkConfigs map[string]*networkConfiguration) bool {
 			nwconfig.localAddr = localAddr
 			foundpeers = true
 		}
-
-		printResult(nwconfig)
 	}
 
 	return foundpeers
+}
+
+func allLinksResponded(networkConfigs map[string]*networkConfiguration) bool {
+	for _, nwconfig := range networkConfigs {
+		if nwconfig.expectResponse {
+			return false
+		}
+	}
+	return true
+}
+
+func waitLinkResponse(linkUpdate chan netlink.LinkUpdate, networkConfigs map[string]*networkConfiguration) error {
+	for !allLinksResponded(networkConfigs) {
+		select {
+		case update := <-linkUpdate:
+			if nwconfig, exists := networkConfigs[update.Link.Attrs().Name]; exists {
+				nwconfig.link = update.Link
+				nwconfig.expectResponse = false
+			}
+
+		case <-time.After(3 * time.Second):
+			return fmt.Errorf("timeout waiting for netlink reply")
+		}
+	}
+
+	return nil
+}
+
+func interfacesUp(networkConfigs map[string]*networkConfiguration) error {
+	linkUpdate := make(chan netlink.LinkUpdate)
+	done := make(chan struct{})
+	defer close(done)
+
+	if err := networkLink.LinkSubscribe(linkUpdate, done); err != nil {
+		return err
+	}
+
+	for _, nwconfig := range networkConfigs {
+		nwconfig.expectResponse = false
+		if nwconfig.link.Attrs().Flags&net.FlagUp == 0 {
+			if err := netlink.LinkSetUp(nwconfig.link); err == nil {
+				nwconfig.expectResponse = true
+			} else {
+				fmt.Printf("Cannot set link '%s' up: %v\n", nwconfig.link.Attrs().Name, err)
+				continue
+			}
+		}
+	}
+
+	_ = waitLinkResponse(linkUpdate, networkConfigs)
+
+	return nil
+}
+
+func interfacesRestoreDown(networkConfigs map[string]*networkConfiguration) error {
+	linkUpdate := make(chan netlink.LinkUpdate)
+	done := make(chan struct{})
+	defer close(done)
+
+	subscribeErr := networkLink.LinkSubscribe(linkUpdate, done)
+
+	for _, nwconfig := range networkConfigs {
+		if nwconfig.origState&net.FlagUp == 0 && nwconfig.link.Attrs().Flags&net.FlagUp != 0 {
+			if err := netlink.LinkSetDown(nwconfig.link); err == nil {
+				fmt.Printf("Setting link '%s' back down\n", nwconfig.link.Attrs().Name)
+			} else {
+				fmt.Printf("Cannot set link '%s' back down: %v\n", nwconfig.link.Attrs().Name, err)
+			}
+		}
+	}
+
+	if subscribeErr != nil {
+		return subscribeErr
+	}
+
+	_ = waitLinkResponse(linkUpdate, networkConfigs)
+
+	return nil
 }
 
 func configureInterfaces(networkConfigs map[string]*networkConfiguration) (int, int) {

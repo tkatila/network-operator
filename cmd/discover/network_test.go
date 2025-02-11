@@ -233,22 +233,22 @@ func TestFakeSysfs(t *testing.T) {
 	}
 }
 
-func TestExamineResults(t *testing.T) {
+func TestLldpResults(t *testing.T) {
 	nwconfigs := getFakeNetworkDataConfigs()
-	foundpeers := examineResults(nwconfigs)
+	foundpeers := lldpResults(nwconfigs)
 
 	if !foundpeers {
 		t.Errorf("expected to find at least one peer addresses, none found")
 	}
 
 	delete(nwconfigs, "eth_c")
-	foundpeers = examineResults(nwconfigs)
+	foundpeers = lldpResults(nwconfigs)
 	if !foundpeers {
 		t.Errorf("expected to find at least one peer addresses, none found")
 	}
 
 	delete(nwconfigs, "eth_a")
-	foundpeers = examineResults(nwconfigs)
+	foundpeers = lldpResults(nwconfigs)
 	if foundpeers {
 		t.Errorf("expected not to find any peer addresses, at least none found")
 	}
@@ -336,7 +336,7 @@ func TestConfigureInterfaces(t *testing.T) {
 	fakenwconfigs := getFakeNetworkDataConfigs()
 
 	fakelinkAddAddrs = make(map[string]*netlink.Addr)
-	_ = examineResults(fakenwconfigs)
+	_ = lldpResults(fakenwconfigs)
 
 	configured, total := configureInterfaces(fakenwconfigs)
 

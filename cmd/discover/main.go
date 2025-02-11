@@ -25,9 +25,15 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/vishvananda/netlink"
 
 	"github.com/intel/intel-network-operator-for-kubernetes/pkg/lldp"
+)
+
+type layerMode int
+
+const (
+	L2 layerMode = iota
+	L3
 )
 
 type cmdConfig struct {
@@ -36,6 +42,7 @@ type cmdConfig struct {
 	configure    bool
 	gaudinetfile string
 	ifaces       []string
+	mode         layerMode
 }
 
 func getConfig(cmd *cobra.Command) (*cmdConfig, error) {
@@ -74,6 +81,23 @@ func getConfig(cmd *cobra.Command) (*cmdConfig, error) {
 		return nil, fmt.Errorf("No devices found")
 	}
 
+	mode, err := cmd.Flags().GetString("mode")
+	if err != nil {
+		return nil, fmt.Errorf("Cannot parse mode expression: %v", err)
+	}
+	switch strings.ToLower(mode) {
+	case "l3":
+		fallthrough
+	case "l3switch":
+		config.mode = L3
+
+	case "l2":
+		config.mode = L2
+
+	default:
+		return nil, fmt.Errorf("Cannot parse mode '%s'", mode)
+	}
+
 	return config, nil
 }
 
@@ -85,13 +109,10 @@ func detectLLDP(config *cmdConfig, networkConfigs map[string]*networkConfigurati
 	defer cancelctx()
 
 	for _, networkconfig := range networkConfigs {
-		networkconfig.origState = networkconfig.link.Attrs().OperState
-
-		if networkconfig.link.Attrs().OperState != netlink.OperUp {
-			if err := netlink.LinkSetUp(networkconfig.link); err != nil {
-				fmt.Printf("Cannot set link '%s' up: %v\n", networkconfig.link.Attrs().Name, err)
-				continue
-			}
+		if networkconfig.link.Attrs().Flags&net.FlagUp == 0 {
+			fmt.Printf("Link '%s' %s, cannot start LLDP\n",
+				networkconfig.link.Attrs().Name, networkconfig.link.Attrs().OperState.String())
+			continue
 		}
 
 		wg.Add(1)
@@ -129,30 +150,33 @@ func cmdRun(cmd *cobra.Command, args []string) error {
 
 	networkConfigs := getNetworkConfigs(config.ifaces)
 
-	detectLLDP(config, networkConfigs)
+	if err := interfacesUp(networkConfigs); err != nil {
+		return err
+	}
 
-	foundpeers := examineResults(networkConfigs)
+	if config.mode == L3 {
+		detectLLDP(config, networkConfigs)
 
-	if config.gaudinetfile != "" {
-		err := WriteGaudiNet(config.gaudinetfile, networkConfigs)
-		if err != nil {
-			fmt.Printf("Error: %v\n", err)
+		foundpeers := lldpResults(networkConfigs)
+
+		if config.gaudinetfile != "" {
+			err := WriteGaudiNet(config.gaudinetfile, networkConfigs)
+			if err != nil {
+				fmt.Printf("Error: %v\n", err)
+			}
+		}
+
+		if config.configure && foundpeers {
+			num, total := configureInterfaces(networkConfigs)
+			fmt.Printf("Configured %d of %d interfaces\n", num, total)
 		}
 	}
 
-	if config.configure && foundpeers {
-		num, total := configureInterfaces(networkConfigs)
-		fmt.Printf("Configured %d of %d interfaces\n", num, total)
-	} else {
-		for _, networkconfig := range networkConfigs {
-			if networkconfig.origState != netlink.OperUp {
+	printResults(config, networkConfigs)
 
-				if err := netlink.LinkSetDown(networkconfig.link); err == nil {
-					fmt.Printf("Setting link '%s' back down\n", networkconfig.link.Attrs().Name)
-				} else {
-					fmt.Printf("Cannot set link '%s' back down: %v\n", networkconfig.link.Attrs().Name, err)
-				}
-			}
+	if !config.configure {
+		if err := interfacesRestoreDown(networkConfigs); err != nil {
+			return err
 		}
 	}
 
@@ -168,7 +192,8 @@ func setupCmd() (*cobra.Command, error) {
 		RunE:  cmdRun,
 	}
 
-	cmd.Flags().BoolP("configure", "", false, "Configure network discovered with LLDP")
+	cmd.Flags().StringP("mode", "", "L3", "'L2' for network layer 2 or 'L3' for network layer 3 (L3) using LLDP")
+	cmd.Flags().BoolP("configure", "", false, "Configure L3 network with LLDP or set interfaces up with L2 networks")
 	cmd.Flags().StringP("interfaces", "", "", "Comma separated list of additional network interfaces")
 	cmd.Flags().StringP("wait", "", "30s", "Time to wait for LLDP packets")
 	cmd.Flags().StringP("gaudinet", "", "", "gaudinet file path")
