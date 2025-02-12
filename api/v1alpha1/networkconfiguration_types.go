@@ -43,8 +43,8 @@ type NetworkConfigurationSpec struct {
 
 // NetworkConfigurationSpec defines the desired state of NetworkConfiguration
 type GaudiScaleOutSpec struct {
-	// Layer where the configuration should occur. Possible options: L2 and L3BGP.
-	// +kubebuilder:validation:Enum=L2;L3BGP
+	// Layer where the configuration should occur. Possible options: L2 and L3.
+	// +kubebuilder:validation:Enum=L2;L3
 	Layer string `json:"layer,omitempty"`
 
 	// Container image to handle interface configurations on the worker nodes.

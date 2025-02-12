@@ -63,10 +63,10 @@ spec:
                     type: string
                   layer:
                     description: 'Layer where the configuration should occur. Possible
-                      options: L2 and L3BGP.'
+                      options: L2 and L3.'
                     enum:
                     - L2
-                    - L3BGP
+                    - L3
                     type: string
                   pullPolicy:
                     description: Normal image pull policy used in the resulting daemonset.

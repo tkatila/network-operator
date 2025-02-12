@@ -57,8 +57,8 @@ const (
 
 	gaudiScaleOutSelection = "gaudi-so"
 
-	layerSelectionL2    = "L2"
-	layerSelectionL3BGP = "L3BGP"
+	layerSelectionL2 = "L2"
+	layerSelectionL3 = "L3"
 
 	gaudinetPathHost      = "/etc/gaudinet.json"
 	gaudinetPathContainer = "/host" + gaudinetPathHost
@@ -118,10 +118,9 @@ func updateGaudiScaleOutDaemonSet(ds *apps.DaemonSet, netconf *networkv1alpha1.N
 
 	switch netconf.Spec.GaudiScaleOut.Layer {
 	case layerSelectionL2:
-		// TODO: fix with real arguments
-		args = append(args, "--configure=false")
-	case layerSelectionL3BGP:
-		args = append(args, "--configure=true", fmt.Sprintf("--gaudinet=%s", gaudinetPathContainer))
+		args = append(args, "--mode=L2", "--configure=false")
+	case layerSelectionL3:
+		args = append(args, "--mode=L3", "--configure=true", fmt.Sprintf("--gaudinet=%s", gaudinetPathContainer))
 
 		addHostVolume(ds, v1.HostPathFileOrCreate, "gaudinetpath", gaudinetPathHost, gaudinetPathContainer)
 	}

@@ -5,8 +5,7 @@ metadata:
 spec:
   configurationType: gaudi-so
   gaudiScaleOut:
-    layer: L3BGP
-    #layer: L2
+    layer: L3
     image: intel/intel-network-linkdiscovery:latest
     pullPolicy: IfNotPresent
   nodeSelector:

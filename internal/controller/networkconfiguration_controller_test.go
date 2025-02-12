@@ -60,7 +60,7 @@ var _ = Describe("NetworkConfiguration Controller", func() {
 				Spec: networkv1alpha1.NetworkConfigurationSpec{
 					ConfigurationType: "gaudi-so",
 					GaudiScaleOut: networkv1alpha1.GaudiScaleOutSpec{
-						Layer: "L3BGP",
+						Layer: "L3",
 						Image: "intel/my-linkdiscovery:latest",
 					},
 				},
@@ -81,9 +81,10 @@ var _ = Describe("NetworkConfiguration Controller", func() {
 				g.Expect(ds.ObjectMeta.Name).To(BeEquivalentTo(typeNamespacedName.Name))
 				g.Expect(ds.Spec.Template.Spec.Containers).To(HaveLen(1))
 				g.Expect(ds.Spec.Template.Spec.Containers[0].Image).To(BeEquivalentTo("intel/my-linkdiscovery:latest"))
-				g.Expect(ds.Spec.Template.Spec.Containers[0].Args).To(HaveLen(2))
-				g.Expect(ds.Spec.Template.Spec.Containers[0].Args[0]).To(BeEquivalentTo("--configure=true"))
-				g.Expect(ds.Spec.Template.Spec.Containers[0].Args[1]).To(BeEquivalentTo("--gaudinet=/host/etc/gaudinet.json"))
+				g.Expect(ds.Spec.Template.Spec.Containers[0].Args).To(HaveLen(3))
+				g.Expect(ds.Spec.Template.Spec.Containers[0].Args[0]).To(BeEquivalentTo("--mode=L3"))
+				g.Expect(ds.Spec.Template.Spec.Containers[0].Args[1]).To(BeEquivalentTo("--configure=true"))
+				g.Expect(ds.Spec.Template.Spec.Containers[0].Args[2]).To(BeEquivalentTo("--gaudinet=/host/etc/gaudinet.json"))
 				g.Expect(ds.Spec.Template.Spec.Volumes).To(HaveLen(1))
 				g.Expect(ds.Spec.Template.Spec.Volumes[0].Name).To(BeEquivalentTo("gaudinetpath"))
 				g.Expect(ds.Spec.Template.Spec.Containers[0].VolumeMounts).To(HaveLen(1))
@@ -100,8 +101,9 @@ var _ = Describe("NetworkConfiguration Controller", func() {
 				g.Expect(k8sClient.Get(ctx, typeNamespacedName, &ds)).To(Succeed())
 				g.Expect(ds.ObjectMeta.Name).To(BeEquivalentTo(typeNamespacedName.Name))
 				g.Expect(ds.Spec.Template.Spec.Containers).To(HaveLen(1))
-				g.Expect(ds.Spec.Template.Spec.Containers[0].Args).To(HaveLen(1))
-				g.Expect(ds.Spec.Template.Spec.Containers[0].Args[0]).To(BeEquivalentTo("--configure=false"))
+				g.Expect(ds.Spec.Template.Spec.Containers[0].Args).To(HaveLen(2))
+				g.Expect(ds.Spec.Template.Spec.Containers[0].Args[0]).To(BeEquivalentTo("--mode=L2"))
+				g.Expect(ds.Spec.Template.Spec.Containers[0].Args[1]).To(BeEquivalentTo("--configure=false"))
 			}, timeout, interval).Should(Succeed())
 
 			Expect(k8sClient.Delete(ctx, networkconfiguration)).To(Succeed())
