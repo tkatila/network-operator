@@ -306,12 +306,20 @@ func configureInterfaces(networkConfigs map[string]*networkConfiguration) (int, 
 			continue
 		}
 
+		foundExisting := false
+
 		for _, addr := range addrs {
 			if nwconfig.localAddr.Equal(addr.IPNet.IP) {
 				fmt.Printf("Interface '%s' already configured '%s'\n",
 					ifname, addr.IPNet.String())
-				continue
+
+				foundExisting = true
+
+				break
 			}
+		}
+
+		if !foundExisting {
 			newlinkaddr := &netlink.Addr{
 				IPNet: &net.IPNet{
 					IP:   *nwconfig.localAddr,
