@@ -117,10 +117,11 @@ func (l *fakeLink) Type() string {
 }
 
 type fakeNetworkTestData struct {
-	pcidevice     string
-	linkaddrs     []net.IPNet
-	nwconfig      networkConfiguration
-	configureaddr bool
+	pcidevice       string
+	linkaddrs       []net.IPNet
+	nwconfig        networkConfiguration
+	numIPAddrs      int
+	shouldConfigure bool
 }
 
 func getFakeNetworkData() map[string]fakeNetworkTestData {
@@ -143,7 +144,8 @@ func getFakeNetworkData() map[string]fakeNetworkTestData {
 				portDescription: "no-alert 10.210.8.122/30",
 				peerHWAddr:      &net.HardwareAddr{0x01, 0x01, 0x02, 0x02, 0x03, 0x03},
 			},
-			configureaddr: true,
+			numIPAddrs:      1,
+			shouldConfigure: true,
 		},
 		// No address, Port Description field with other string
 		"eth_b": {
@@ -158,7 +160,8 @@ func getFakeNetworkData() map[string]fakeNetworkTestData {
 				portDescription: "unexpected port description",
 				peerHWAddr:      &net.HardwareAddr{0x02, 0x02, 0x03, 0x03, 0x4, 0x4},
 			},
-			configureaddr: false,
+			numIPAddrs:      0,
+			shouldConfigure: false,
 		},
 		// Already configured with LLDP address 10.210.8.125/30
 		"eth_c": {
@@ -178,7 +181,8 @@ func getFakeNetworkData() map[string]fakeNetworkTestData {
 				portDescription: "no-alert 10.210.8.126/30",
 				peerHWAddr:      &net.HardwareAddr{0x03, 0x03, 0x4, 0x4, 0x5, 0x5},
 			},
-			configureaddr: false,
+			numIPAddrs:      0,
+			shouldConfigure: true,
 		},
 	}
 }
@@ -292,6 +296,7 @@ func TestGetNetworkConfigs(t *testing.T) {
 func fakeLinkAddrList(link netlink.Link, family int) ([]netlink.Addr, error) {
 	netlinkaddrs := []netlink.Addr{}
 	name := link.Attrs().Name
+
 	fakenwdata, exists := getFakeNetworkData()[name]
 	if !exists {
 		return nil, fmt.Errorf("fake link '%s' does not exist in test data for fakeLinkAddrList", name)
@@ -311,7 +316,15 @@ func fakeLinkAddrList(link netlink.Link, family int) ([]netlink.Addr, error) {
 	return netlinkaddrs, nil
 }
 
-var fakelinkAddAddrs map[string]*netlink.Addr
+func fakeLinkAddrListErr(link netlink.Link, family int) ([]netlink.Addr, error) {
+	return nil, fmt.Errorf("I'm broken")
+}
+
+func fakeLinkAddrAddErr(link netlink.Link, addr *netlink.Addr) error {
+	return fmt.Errorf("I'm broken")
+}
+
+var fakeAddrsAdded []*netlink.Addr
 
 func fakeLinkAddrAdd(link netlink.Link, addr *netlink.Addr) error {
 	name := link.Attrs().Name
@@ -324,7 +337,7 @@ func fakeLinkAddrAdd(link netlink.Link, addr *netlink.Addr) error {
 		return fmt.Errorf("fake link '%s' does not exist in test data for fakeLinkAddrAdd", name)
 	}
 
-	fakelinkAddAddrs[name] = addr
+	fakeAddrsAdded = append(fakeAddrsAdded, addr)
 
 	return nil
 }
@@ -333,47 +346,57 @@ func TestConfigureInterfaces(t *testing.T) {
 	networkLink.AddrList = fakeLinkAddrList
 	networkLink.AddrAdd = fakeLinkAddrAdd
 
-	fakenwconfigs := getFakeNetworkDataConfigs()
+	fakeNetworkData := getFakeNetworkData()
 
-	fakelinkAddAddrs = make(map[string]*netlink.Addr)
-	_ = lldpResults(fakenwconfigs)
-
-	configured, total := configureInterfaces(fakenwconfigs)
-
-	if len(fakelinkAddAddrs) == 0 {
-		t.Errorf("no addresses added")
-	}
-
-	configureaddr := 0
-	for ifname, nwdata := range getFakeNetworkData() {
-		var str string
-
-		if nwdata.configureaddr {
-			configureaddr++
-		}
-		resultaddr, exists := fakelinkAddAddrs[ifname]
-		if exists {
-			str = "configured"
-			delete(fakelinkAddAddrs, ifname)
-		} else {
-			str = "not configured"
+	for iface, fnc := range fakeNetworkData {
+		ifs := map[string]*networkConfiguration{
+			iface: &fnc.nwconfig,
 		}
 
-		if nwdata.configureaddr != exists {
-			t.Errorf("Interface '%s' %s", ifname, str)
+		_ = lldpResults(ifs)
+
+		// Modified by fakeLinkAddrAdd
+		fakeAddrsAdded = []*netlink.Addr{}
+
+		configured, _ := configureInterfaces(ifs)
+
+		if fnc.shouldConfigure && configured == 0 {
+			t.Error("interface did not configure when it should have", iface)
+		}
+		if !fnc.shouldConfigure && configured >= 1 {
+			t.Error("interface configured when it shouldn't have", iface)
 		}
 
-		if !exists {
-			continue
-		}
-
-		localAddr := fakenwconfigs[ifname].localAddr
-		if localAddr == nil || !resultaddr.IPNet.IP.Equal(*localAddr) {
-			t.Errorf("Addresses for interface '%s' do not match: %v", ifname, nwdata.nwconfig.localAddr)
+		if fnc.numIPAddrs != len(fakeAddrsAdded) {
+			t.Error("invalid amount of addresses added", iface, fnc.numIPAddrs, len(fakeAddrsAdded))
 		}
 	}
+}
 
-	if configured != configureaddr || total != len(fakenwconfigs) {
-		t.Errorf("configured %d/%d %v", configured, total, fakelinkAddAddrs)
+func TestConfigureInterfacesErr(t *testing.T) {
+	ifName := "eth_a"
+	fnd := getFakeNetworkData()[ifName]
+
+	ifs := map[string]*networkConfiguration{
+		ifName: &fnd.nwconfig,
+	}
+
+	_ = lldpResults(ifs)
+
+	networkLink.AddrList = fakeLinkAddrListErr
+
+	configured, _ := configureInterfaces(ifs)
+
+	if configured != 0 {
+		t.Error("configure succeeded when error should have been returned")
+	}
+
+	networkLink.AddrList = fakeLinkAddrList
+	networkLink.AddrAdd = fakeLinkAddrAddErr
+
+	configured, _ = configureInterfaces(ifs)
+
+	if configured != 0 {
+		t.Error("configure succeeded when error should have been returned")
 	}
 }
