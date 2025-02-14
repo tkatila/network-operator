@@ -117,7 +117,7 @@ func detectLLDP(config *cmdConfig, networkConfigs map[string]*networkConfigurati
 
 		wg.Add(1)
 		go func() {
-			lldpClient := lldp.NewClient(timeoutctx, networkconfig.link.Attrs().Name)
+			lldpClient := lldp.NewClient(timeoutctx, networkconfig.link.Attrs().Name, *networkconfig.localHwAddr)
 			if err := lldpClient.Start(lldpResultChan); err != nil {
 				fmt.Printf("Cannot start LLDP client: %v\n", err)
 			}

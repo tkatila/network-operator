@@ -57,6 +57,7 @@ type networkConfiguration struct {
 	lldpPeer        *net.IP
 	localAddr       *net.IP
 	peerHWAddr      *net.HardwareAddr
+	localHwAddr     *net.HardwareAddr
 }
 
 func getSysfsRoot() string {
@@ -115,8 +116,9 @@ func getNetworkConfigs(ifacenames []string) map[string]*networkConfiguration {
 		}
 
 		links[name] = &networkConfiguration{
-			link:      link,
-			origState: link.Attrs().Flags,
+			link:        link,
+			origState:   link.Attrs().Flags,
+			localHwAddr: &link.Attrs().HardwareAddr,
 		}
 	}
 

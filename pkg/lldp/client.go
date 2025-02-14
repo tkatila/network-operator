@@ -27,6 +27,7 @@ package lldp
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"time"
 
 	"github.com/google/gopacket"
@@ -43,6 +44,7 @@ const (
 // Client consumes lldp messages.
 type Client struct {
 	InterfaceName string
+	InterfaceMac  []byte
 	handle        *pcap.Handle
 	ctx           context.Context
 }
@@ -57,9 +59,10 @@ type DiscoveryResult struct {
 }
 
 // NewClient creates a new lldp client.
-func NewClient(ctx context.Context, ifacename string) *Client {
+func NewClient(ctx context.Context, ifacename string, hwAddr []byte) *Client {
 	return &Client{
 		InterfaceName: ifacename,
+		InterfaceMac:  hwAddr,
 		ctx:           ctx,
 	}
 }
@@ -101,6 +104,12 @@ func (l *Client) Start(resultChan chan<- DiscoveryResult) error {
 			if packet.LinkLayer().LayerType() != layers.LayerTypeEthernet {
 				continue
 			}
+
+			// Ignore LLDP packets sent by us
+			if reflect.DeepEqual(packet.LinkLayer().LinkFlow().Src().Raw(), l.InterfaceMac) {
+				continue
+			}
+
 			dr := DiscoveryResult{InterfaceName: l.InterfaceName}
 			for _, layer := range packet.Layers() {
 				if layer.LayerType() == layers.LayerTypeLinkLayerDiscovery {
