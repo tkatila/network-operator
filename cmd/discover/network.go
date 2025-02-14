@@ -316,6 +316,7 @@ func configureInterfaces(networkConfigs map[string]*networkConfiguration) (int, 
 					ifname, addr.IPNet.String())
 
 				foundExisting = true
+				configured++
 
 				break
 			}

@@ -154,6 +154,9 @@ func cmdRun(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	numConfigured := 0
+	numTotal := len(networkConfigs)
+
 	if config.mode == L3 {
 		detectLLDP(config, networkConfigs)
 
@@ -167,8 +170,8 @@ func cmdRun(cmd *cobra.Command, args []string) error {
 		}
 
 		if config.configure && foundpeers {
-			num, total := configureInterfaces(networkConfigs)
-			fmt.Printf("Configured %d of %d interfaces\n", num, total)
+			numConfigured, numTotal = configureInterfaces(networkConfigs)
+			fmt.Printf("Configured %d of %d interfaces\n", numConfigured, numTotal)
 		}
 	}
 
@@ -177,6 +180,12 @@ func cmdRun(cmd *cobra.Command, args []string) error {
 	if !config.configure {
 		if err := interfacesRestoreDown(networkConfigs); err != nil {
 			return err
+		}
+	} else if config.configure && config.mode == L3 {
+		if numConfigured < numTotal {
+			fmt.Printf("Not all interfaces were configured.\n")
+
+			return fmt.Errorf("not all interfaces were configured")
 		}
 	}
 

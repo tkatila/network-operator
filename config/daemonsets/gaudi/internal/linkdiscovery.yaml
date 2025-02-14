@@ -19,6 +19,7 @@ spec:
         app: intel-network-tools
     spec:
       hostNetwork: true
+      restartPolicy: OnFailure
       containers:
       - env:
         - name: NODE_NAME

@@ -63,7 +63,7 @@ spec:
         args:
           - --leader-elect
           - --health-probe-bind-address=:8081
-        image: intel/intel-network-operator:0.0.1
+        image: intel/intel-network-operator:latest
         name: manager
         securityContext:
           allowPrivilegeEscalation: false

@@ -22,6 +22,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	apps "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
@@ -60,7 +61,7 @@ const (
 	layerSelectionL2 = "L2"
 	layerSelectionL3 = "L3"
 
-	gaudinetPathHost      = "/etc/gaudinet.json"
+	gaudinetPathHost      = "/etc/habanalabs/gaudinet.json"
 	gaudinetPathContainer = "/host" + gaudinetPathHost
 )
 
@@ -120,9 +121,9 @@ func updateGaudiScaleOutDaemonSet(ds *apps.DaemonSet, netconf *networkv1alpha1.N
 	case layerSelectionL2:
 		args = append(args, "--mode=L2", "--configure=false")
 	case layerSelectionL3:
-		args = append(args, "--mode=L3", "--configure=true", fmt.Sprintf("--gaudinet=%s", gaudinetPathContainer))
+		args = append(args, "--mode=L3", "--wait=90", "--configure=true", fmt.Sprintf("--gaudinet=%s", gaudinetPathContainer))
 
-		addHostVolume(ds, v1.HostPathFileOrCreate, "gaudinetpath", gaudinetPathHost, gaudinetPathContainer)
+		addHostVolume(ds, v1.HostPathDirectoryOrCreate, "gaudinetpath", filepath.Dir(gaudinetPathHost), filepath.Dir(gaudinetPathContainer))
 	}
 
 	ds.Spec.Template.Spec.Containers[0].Args = args
