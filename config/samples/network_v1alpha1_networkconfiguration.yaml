@@ -1,7 +1,7 @@
 apiVersion: network.intel.com/v1alpha1
 kind: NetworkConfiguration
 metadata:
-  name: networkconfiguration-gaudi-scale-out
+  name: netconf-gaudi-scale-out
 spec:
   configurationType: gaudi-so
   gaudiScaleOut:
@@ -9,4 +9,4 @@ spec:
     image: intel/intel-network-linkdiscovery:latest
     pullPolicy: IfNotPresent
   nodeSelector:
-    intel.feature.node.kubernetes.io/gpu: "true"
+    intel.feature.node.kubernetes.io/gaudi-ready: "true"

@@ -43,6 +43,7 @@ type cmdConfig struct {
 	gaudinetfile string
 	ifaces       []string
 	mode         layerMode
+	keepRunning  bool
 }
 
 func getConfig(cmd *cobra.Command) (*cmdConfig, error) {
@@ -97,6 +98,12 @@ func getConfig(cmd *cobra.Command) (*cmdConfig, error) {
 	default:
 		return nil, fmt.Errorf("Cannot parse mode '%s'", mode)
 	}
+
+	keepRunning, err := cmd.Flags().GetBool("keep-running")
+	if err != nil {
+		return nil, fmt.Errorf("Cannot parse keep-running expression: %v", err)
+	}
+	config.keepRunning = keepRunning
 
 	return config, nil
 }
@@ -189,6 +196,14 @@ func cmdRun(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	if config.configure && config.keepRunning {
+		fmt.Println("Configurations done. Idling...")
+
+		for {
+			time.Sleep(time.Second)
+		}
+	}
+
 	return nil
 }
 
@@ -206,6 +221,7 @@ func setupCmd() (*cobra.Command, error) {
 	cmd.Flags().StringP("interfaces", "", "", "Comma separated list of additional network interfaces")
 	cmd.Flags().StringP("wait", "", "30s", "Time to wait for LLDP packets")
 	cmd.Flags().StringP("gaudinet", "", "", "gaudinet file path")
+	cmd.Flags().BoolP("keep-running", "", false, "Keep running after any configurations are done")
 
 	return cmd, nil
 }

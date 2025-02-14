@@ -19,7 +19,6 @@ spec:
         app: intel-network-tools
     spec:
       hostNetwork: true
-      restartPolicy: OnFailure
       containers:
       - env:
         - name: NODE_NAME
@@ -45,7 +44,4 @@ spec:
               - NET_ADMIN
               - NET_RAW
               - SYS_CHROOT
-      nodeSelector:
-        kubernetes.io/arch: amd64
-        intel.feature.node.kubernetes.io/gaudi-ready: "true"
       terminationGracePeriodSeconds: 10
