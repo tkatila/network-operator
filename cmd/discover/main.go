@@ -18,6 +18,7 @@ package main
 
 import (
 	"context"
+	goflag "flag"
 	"fmt"
 	"net"
 	"strings"
@@ -25,6 +26,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"k8s.io/klog/v2"
 
 	"github.com/intel/intel-network-operator-for-kubernetes/pkg/lldp"
 )
@@ -117,7 +119,7 @@ func detectLLDP(config *cmdConfig, networkConfigs map[string]*networkConfigurati
 
 	for _, networkconfig := range networkConfigs {
 		if networkconfig.link.Attrs().Flags&net.FlagUp == 0 {
-			fmt.Printf("Link '%s' %s, cannot start LLDP\n",
+			klog.Infof("Link '%s' %s, cannot start LLDP\n",
 				networkconfig.link.Attrs().Name, networkconfig.link.Attrs().OperState.String())
 			continue
 		}
@@ -126,12 +128,12 @@ func detectLLDP(config *cmdConfig, networkConfigs map[string]*networkConfigurati
 		go func() {
 			lldpClient := lldp.NewClient(timeoutctx, networkconfig.link.Attrs().Name, *networkconfig.localHwAddr)
 			if err := lldpClient.Start(lldpResultChan); err != nil {
-				fmt.Printf("Cannot start LLDP client: %v\n", err)
+				klog.Infof("Cannot start LLDP client: %v\n", err)
 			}
 			wg.Done()
 		}()
 
-		fmt.Printf("Started LLDP discovery for '%s'...\n", networkconfig.link.Attrs().Name)
+		klog.Infof("Started LLDP discovery for '%s'...\n", networkconfig.link.Attrs().Name)
 	}
 
 	wg.Wait()
@@ -149,7 +151,6 @@ func detectLLDP(config *cmdConfig, networkConfigs map[string]*networkConfigurati
 }
 
 func cmdRun(cmd *cobra.Command, args []string) error {
-
 	config, err := getConfig(cmd)
 	if err != nil {
 		return err
@@ -172,17 +173,17 @@ func cmdRun(cmd *cobra.Command, args []string) error {
 		if config.gaudinetfile != "" {
 			err := WriteGaudiNet(config.gaudinetfile, networkConfigs)
 			if err != nil {
-				fmt.Printf("Error: %v\n", err)
+				klog.Errorf("Error: %v\n", err)
 			}
 		}
 
 		if config.configure && foundpeers {
 			numConfigured, numTotal = configureInterfaces(networkConfigs)
-			fmt.Printf("Configured %d of %d interfaces\n", numConfigured, numTotal)
+			klog.Infof("Configured %d of %d interfaces\n", numConfigured, numTotal)
 		}
 	}
 
-	printResults(config, networkConfigs)
+	logResults(config, networkConfigs)
 
 	if !config.configure {
 		if err := interfacesRestoreDown(networkConfigs); err != nil {
@@ -190,14 +191,14 @@ func cmdRun(cmd *cobra.Command, args []string) error {
 		}
 	} else if config.configure && config.mode == L3 {
 		if numConfigured < numTotal {
-			fmt.Printf("Not all interfaces were configured.\n")
+			klog.Infof("Not all interfaces were configured.\n")
 
 			return fmt.Errorf("not all interfaces were configured")
 		}
 	}
 
 	if config.configure && config.keepRunning {
-		fmt.Println("Configurations done. Idling...")
+		klog.Infof("Configurations done. Idling...")
 
 		for {
 			time.Sleep(time.Second)
@@ -215,6 +216,11 @@ func setupCmd() (*cobra.Command, error) {
 		Short: "Discover and optionally configure network devices",
 		RunE:  cmdRun,
 	}
+	fs := goflag.FlagSet{}
+	klog.InitFlags(&fs)
+
+	cmd.Flags().AddGoFlagSet(&fs)
+	cmd.Flags().SortFlags = false
 
 	cmd.Flags().StringP("mode", "", "L3", "'L2' for network layer 2 or 'L3' for network layer 3 (L3) using LLDP")
 	cmd.Flags().BoolP("configure", "", false, "Configure L3 network with LLDP or set interfaces up with L2 networks")
@@ -227,10 +233,11 @@ func setupCmd() (*cobra.Command, error) {
 }
 
 func main() {
+	defer klog.Flush()
 	cmd, err := setupCmd()
 
 	if err != nil {
-		fmt.Printf("Could not start: %v\n", err)
+		klog.Errorf("Could not start: %v\n", err)
 		return
 	}
 

@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/vishvananda/netlink"
+	"k8s.io/klog/v2"
 )
 
 const (
@@ -79,21 +80,21 @@ func getNetworks() []string {
 	paths, err := filepath.Glob(pattern)
 
 	if err != nil {
-		fmt.Printf("no PCI devices found\n")
+		klog.Warningf("no PCI devices found\n")
 		return habanaNetDevices
 	}
 
 	for _, p := range paths {
 		devicesymlinktarget, err := filepath.EvalSymlinks(p)
 		if err != nil {
-			fmt.Printf("Expected '%s' to be a symlink: %v\n", p, err)
+			klog.Warningf("Expected '%s' to be a symlink: %v\n", p, err)
 			continue
 		}
 
 		netdevicepattern := filepath.Join(devicesymlinktarget, netDevicePattern)
 		netdevices, err := filepath.Glob(netdevicepattern)
 		if err != nil {
-			fmt.Printf("Could not find network device files: %v", err)
+			klog.Warningf("Could not find network device files: %v", err)
 		}
 		for _, n := range netdevices {
 			name := filepath.Base(n)
@@ -111,7 +112,7 @@ func getNetworkConfigs(ifacenames []string) map[string]*networkConfiguration {
 	for _, name := range ifacenames {
 		link, err := networkLink.LinkByName(name)
 		if err != nil {
-			fmt.Printf("Link '%s' not found: %v\n", name, err)
+			klog.Warningf("Link '%s' not found: %v\n", name, err)
 			continue
 		}
 
@@ -158,42 +159,42 @@ func selectMask30L3Address(nwconfig *networkConfiguration) (*net.IP, *net.IP, er
 	return &peeraddr, &localaddr, err
 }
 
-func printResults(config *cmdConfig, networkConfigs map[string]*networkConfiguration) {
+func logResults(config *cmdConfig, networkConfigs map[string]*networkConfiguration) {
 	for _, nwconfig := range networkConfigs {
-		fmt.Printf("Interface '%s' %s:\n", nwconfig.link.Attrs().Name, nwconfig.link.Attrs().Flags)
+		klog.V(3).Infof("Interface '%s' %s:\n", nwconfig.link.Attrs().Name, nwconfig.link.Attrs().Flags)
 
-		fmt.Printf("\tConfigured addresses: ")
+		str := ("\tConfigured addresses: ")
 		addrs, err := networkLink.AddrList(nwconfig.link, netlink.FAMILY_ALL)
 		if len(addrs) == 0 || err != nil {
-			fmt.Printf("no addresses")
+			str += "no addresses"
 		} else {
 			for _, addr := range addrs {
-				fmt.Printf("%s", addr.IPNet.String())
+				str += addr.IPNet.String()
 				if nwconfig.localAddr != nil && addr.IPNet.IP.Equal(*nwconfig.localAddr) {
-					fmt.Printf("(matches lldp)")
+					str += "(matches lldp)"
 				}
-				fmt.Printf(" ")
+				str += " "
 			}
 		}
-		fmt.Printf("\n")
+		klog.V(3).Info(str)
 
 		if config.mode == L3 {
 			addr := noAddress
 			if nwconfig.peerHWAddr != nil {
 				addr = nwconfig.peerHWAddr.String()
 			}
-			fmt.Printf("\tPeer MAC address: %s\n", addr)
+			klog.V(3).Infof("\tPeer MAC address: %s\n", addr)
 
 			addr = noAddress
 			if nwconfig.lldpPeer != nil {
 				addr = nwconfig.lldpPeer.String()
 			}
-			fmt.Printf("\tLLDP address: %s\n", addr)
+			klog.V(3).Infof("\tLLDP address: %s\n", addr)
 			addr = noAddress
 			if nwconfig.localAddr != nil {
 				addr = nwconfig.localAddr.String()
 			}
-			fmt.Printf("\tLLDP /30 address to add: %s\n", addr)
+			klog.V(3).Infof("\tLLDP /30 address to add: %s\n", addr)
 		}
 	}
 }
@@ -254,7 +255,7 @@ func interfacesUp(networkConfigs map[string]*networkConfiguration) error {
 			if err := netlink.LinkSetUp(nwconfig.link); err == nil {
 				nwconfig.expectResponse = true
 			} else {
-				fmt.Printf("Cannot set link '%s' up: %v\n", nwconfig.link.Attrs().Name, err)
+				klog.Warningf("Cannot set link '%s' up: %v\n", nwconfig.link.Attrs().Name, err)
 				continue
 			}
 		}
@@ -275,9 +276,9 @@ func interfacesRestoreDown(networkConfigs map[string]*networkConfiguration) erro
 	for _, nwconfig := range networkConfigs {
 		if nwconfig.origState&net.FlagUp == 0 && nwconfig.link.Attrs().Flags&net.FlagUp != 0 {
 			if err := netlink.LinkSetDown(nwconfig.link); err == nil {
-				fmt.Printf("Setting link '%s' back down\n", nwconfig.link.Attrs().Name)
+				klog.Infof("Setting link '%s' back down\n", nwconfig.link.Attrs().Name)
 			} else {
-				fmt.Printf("Cannot set link '%s' back down: %v\n", nwconfig.link.Attrs().Name, err)
+				klog.Warningf("Cannot set link '%s' back down: %v\n", nwconfig.link.Attrs().Name, err)
 			}
 		}
 	}
@@ -294,7 +295,7 @@ func interfacesRestoreDown(networkConfigs map[string]*networkConfiguration) erro
 func configureInterfaces(networkConfigs map[string]*networkConfiguration) (int, int) {
 	configured := 0
 
-	fmt.Printf("Configuring interfaces...\n")
+	klog.Infof("Configuring interfaces...\n")
 
 	for _, nwconfig := range networkConfigs {
 		if nwconfig.localAddr == nil {
@@ -304,7 +305,7 @@ func configureInterfaces(networkConfigs map[string]*networkConfiguration) (int, 
 		addrs, err := networkLink.AddrList(nwconfig.link, netlink.FAMILY_V4)
 		ifname := nwconfig.link.Attrs().Name
 		if err != nil {
-			fmt.Printf("Could not get addresses for link '%s': %v\n", ifname, err)
+			klog.Warningf("Could not get addresses for link '%s': %v\n", ifname, err)
 			continue
 		}
 
@@ -312,7 +313,7 @@ func configureInterfaces(networkConfigs map[string]*networkConfiguration) (int, 
 
 		for _, addr := range addrs {
 			if nwconfig.localAddr.Equal(addr.IPNet.IP) {
-				fmt.Printf("Interface '%s' already configured '%s'\n",
+				klog.Infof("Interface '%s' already configured '%s'\n",
 					ifname, addr.IPNet.String())
 
 				foundExisting = true
@@ -330,13 +331,13 @@ func configureInterfaces(networkConfigs map[string]*networkConfiguration) (int, 
 				},
 			}
 			if err := networkLink.AddrAdd(nwconfig.link, newlinkaddr); err != nil {
-				fmt.Printf("Could not configure address '%s' to interface '%s': %v\n",
+				klog.Warningf("Could not configure address '%s' to interface '%s': %v\n",
 					nwconfig.localAddr.String(), ifname, err)
 				continue
 			}
 			configured++
 
-			fmt.Printf("Configured address '%s' to interface '%s'\n",
+			klog.Infof("Configured address '%s' to interface '%s'\n",
 				nwconfig.localAddr.String(), ifname)
 		}
 	}

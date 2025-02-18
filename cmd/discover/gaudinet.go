@@ -21,6 +21,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"k8s.io/klog/v2"
 )
 
 type GaudiNet struct {
@@ -44,12 +46,12 @@ func GenerateGaudiNet(networkConfigs map[string]*networkConfiguration) ([]byte, 
 
 	for ifname, nwconfig := range networkConfigs {
 		if nwconfig.localAddr == nil {
-			fmt.Printf("Interface '%s' has no LLDP address when creating gaudinet file, skipping...\n", ifname)
+			klog.Warningf("Interface '%s' has no LLDP address when creating gaudinet file, skipping...\n", ifname)
 			continue
 		}
 
 		if nwconfig.peerHWAddr == nil {
-			fmt.Printf("Interface '%s' has no peer MAC address when creating gaudinet file, skipping...\n", ifname)
+			klog.Warningf("Interface '%s' has no peer MAC address when creating gaudinet file, skipping...\n", ifname)
 			continue
 		}
 
