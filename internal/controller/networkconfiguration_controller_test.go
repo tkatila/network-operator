@@ -63,6 +63,9 @@ var _ = Describe("NetworkConfiguration Controller", func() {
 						Layer: "L3",
 						Image: "intel/my-linkdiscovery:latest",
 					},
+					NodeSelector: map[string]string{
+						"foo": "bar",
+					},
 				},
 			}
 			Expect(k8sClient.Create(ctx, resource)).To(Succeed())
@@ -82,11 +85,12 @@ var _ = Describe("NetworkConfiguration Controller", func() {
 				g.Expect(ds.Spec.Template.Spec.Containers).To(HaveLen(1))
 				g.Expect(ds.Spec.Template.Spec.Containers[0].Image).To(BeEquivalentTo("intel/my-linkdiscovery:latest"))
 				g.Expect(ds.Spec.Template.Spec.Containers[0].Args).To(HaveLen(5))
-				g.Expect(ds.Spec.Template.Spec.Containers[0].Args[0]).To(BeEquivalentTo("--mode=L3"))
-				g.Expect(ds.Spec.Template.Spec.Containers[0].Args[1]).To(BeEquivalentTo("--wait=90"))
-				g.Expect(ds.Spec.Template.Spec.Containers[0].Args[2]).To(BeEquivalentTo("--configure=true"))
-				g.Expect(ds.Spec.Template.Spec.Containers[0].Args[3]).To(BeEquivalentTo("--gaudinet=/host/etc/habanalabs/gaudinet.json"))
-				g.Expect(ds.Spec.Template.Spec.Containers[0].Args[4]).To(BeEquivalentTo("--keep-running"))
+				g.Expect(ds.Spec.Template.Spec.Containers[0].Args[0]).To(BeEquivalentTo("--configure=true"))
+				g.Expect(ds.Spec.Template.Spec.Containers[0].Args[1]).To(BeEquivalentTo("--keep-running"))
+				g.Expect(ds.Spec.Template.Spec.Containers[0].Args[2]).To(BeEquivalentTo("--mode=L3"))
+				g.Expect(ds.Spec.Template.Spec.Containers[0].Args[3]).To(BeEquivalentTo("--wait=90"))
+				g.Expect(ds.Spec.Template.Spec.Containers[0].Args[4]).To(BeEquivalentTo("--gaudinet=/host/etc/habanalabs/gaudinet.json"))
+
 				g.Expect(ds.Spec.Template.Spec.Volumes).To(HaveLen(2))
 				g.Expect(ds.Spec.Template.Spec.Volumes[0].Name).To(BeEquivalentTo("nfd-features"))
 				g.Expect(ds.Spec.Template.Spec.Volumes[1].Name).To(BeEquivalentTo("gaudinetpath"))
@@ -106,9 +110,9 @@ var _ = Describe("NetworkConfiguration Controller", func() {
 				g.Expect(ds.ObjectMeta.Name).To(BeEquivalentTo(typeNamespacedName.Name))
 				g.Expect(ds.Spec.Template.Spec.Containers).To(HaveLen(1))
 				g.Expect(ds.Spec.Template.Spec.Containers[0].Args).To(HaveLen(3))
-				g.Expect(ds.Spec.Template.Spec.Containers[0].Args[0]).To(BeEquivalentTo("--mode=L2"))
-				g.Expect(ds.Spec.Template.Spec.Containers[0].Args[1]).To(BeEquivalentTo("--configure=true"))
-				g.Expect(ds.Spec.Template.Spec.Containers[0].Args[2]).To(BeEquivalentTo("--keep-running"))
+				g.Expect(ds.Spec.Template.Spec.Containers[0].Args[0]).To(BeEquivalentTo("--configure=true"))
+				g.Expect(ds.Spec.Template.Spec.Containers[0].Args[1]).To(BeEquivalentTo("--keep-running"))
+				g.Expect(ds.Spec.Template.Spec.Containers[0].Args[2]).To(BeEquivalentTo("--mode=L2"))
 			}, timeout, interval).Should(Succeed())
 
 			Expect(k8sClient.Delete(ctx, networkconfiguration)).To(Succeed())
