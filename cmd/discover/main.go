@@ -21,6 +21,7 @@ import (
 	goflag "flag"
 	"fmt"
 	"net"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -36,6 +37,10 @@ type layerMode int
 const (
 	L2 layerMode = iota
 	L3
+
+	nfdFeatureDir         = "/etc/kubernetes/node-feature-discovery/features.d/"
+	nfdLabelFile          = nfdFeatureDir + "scale-out-readiness.txt"
+	nfdScaleOutReadyLabel = "intel.feature.node.kubernetes.io/gaudi-scale-out=true"
 )
 
 type cmdConfig struct {
@@ -198,6 +203,16 @@ func cmdRun(cmd *cobra.Command, args []string) error {
 	}
 
 	if config.configure && config.keepRunning {
+		if s, err := os.Stat(nfdFeatureDir); err == nil && s.IsDir() {
+			content := nfdScaleOutReadyLabel + "\n"
+
+			if err := os.WriteFile(nfdLabelFile, []byte(content), 0644); err != nil {
+				klog.Errorf("Failed to write NFD label to indicate scale-out readiness: %+v\n", err)
+
+				return err
+			}
+		}
+
 		klog.Infof("Configurations done. Idling...")
 
 		for {

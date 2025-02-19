@@ -66,6 +66,12 @@ const (
 )
 
 func addHostVolume(ds *apps.DaemonSet, volumeType v1.HostPathType, volumeName, hostPath, containerPath string) {
+	for _, vol := range ds.Spec.Template.Spec.Volumes {
+		if vol.Name == volumeName {
+			return
+		}
+	}
+
 	volumeAdd := v1.Volume{
 		Name: volumeName,
 		VolumeSource: v1.VolumeSource{
@@ -113,9 +119,6 @@ func updateGaudiScaleOutDaemonSet(ds *apps.DaemonSet, netconf *networkv1alpha1.N
 	}
 
 	args := []string{}
-
-	ds.Spec.Template.Spec.Volumes = []v1.Volume{}
-	ds.Spec.Template.Spec.Containers[0].VolumeMounts = []v1.VolumeMount{}
 
 	switch netconf.Spec.GaudiScaleOut.Layer {
 	case layerSelectionL2:

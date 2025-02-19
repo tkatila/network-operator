@@ -19,6 +19,11 @@ spec:
         app: intel-network-tools
     spec:
       hostNetwork: true
+      volumes:
+      - name: nfd-features
+        hostPath:
+          path: /etc/kubernetes/node-feature-discovery/features.d/
+          type: DirectoryOrCreate
       containers:
       - env:
         - name: NODE_NAME
@@ -36,6 +41,9 @@ spec:
           requests:
             cpu: 40m
             memory: 45Mi
+        volumeMounts:
+        - mountPath: /etc/kubernetes/node-feature-discovery/features.d/
+          name: nfd-features
         securityContext:
           allowPrivilegeEscalation: true
           readOnlyRootFilesystem: true
