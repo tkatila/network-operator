@@ -161,6 +161,8 @@ func cmdRun(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	cmd.SilenceUsage = true
+
 	networkConfigs := getNetworkConfigs(config.ifaces)
 
 	if err := interfacesUp(networkConfigs); err != nil {
@@ -196,9 +198,7 @@ func cmdRun(cmd *cobra.Command, args []string) error {
 		}
 	} else if config.configure && config.mode == L3 {
 		if numConfigured < numTotal {
-			klog.Infof("Not all interfaces were configured.\n")
-
-			return fmt.Errorf("not all interfaces were configured")
+			return fmt.Errorf("Not all interfaces were configured (%d/%d).", numConfigured, numTotal)
 		}
 	}
 
@@ -207,9 +207,7 @@ func cmdRun(cmd *cobra.Command, args []string) error {
 			content := nfdScaleOutReadyLabel + "\n"
 
 			if err := os.WriteFile(nfdLabelFile, []byte(content), 0644); err != nil {
-				klog.Errorf("Failed to write NFD label to indicate scale-out readiness: %+v\n", err)
-
-				return err
+				return fmt.Errorf("Failed to write NFD label to indicate scale-out readiness: %+v\n", err)
 			}
 		}
 
