@@ -36,6 +36,11 @@ func TestSelectMask30L3Address(t *testing.T) {
 	expectedaddr := net.IPv4(10, 210, 8, 121)
 
 	nwconfig := networkConfiguration{
+		link: &fakeLink{
+			fakeAttrs: netlink.LinkAttrs{
+				Name: "eth_a",
+			},
+		},
 		portDescription: "no-alert " + expectedpeer.String() + "/30",
 	}
 
@@ -50,6 +55,11 @@ func TestSelectMask30L3Address(t *testing.T) {
 	addrmask := "/16"
 	addrtext := "10.210.8.122"
 	nwconfig = networkConfiguration{
+		link: &fakeLink{
+			fakeAttrs: netlink.LinkAttrs{
+				Name: "eth_a",
+			},
+		},
 		portDescription: "no-alert " + addrtext + addrmask,
 	}
 	peeraddr, localaddr, err = selectMask30L3Address(&nwconfig)
