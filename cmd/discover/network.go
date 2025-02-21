@@ -17,6 +17,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"os"
@@ -25,6 +26,7 @@ import (
 	"time"
 
 	"github.com/vishvananda/netlink"
+	"golang.org/x/sys/unix"
 	"k8s.io/klog/v2"
 )
 
@@ -41,6 +43,7 @@ type networkLinkFn struct {
 	AddrList      func(link netlink.Link, family int) ([]netlink.Addr, error)
 	AddrAdd       func(link netlink.Link, addr *netlink.Addr) error
 	LinkSubscribe func(ch chan<- netlink.LinkUpdate, done <-chan struct{}) error
+	RouteAppend   func(route *netlink.Route) error
 }
 
 var networkLink = networkLinkFn{
@@ -48,6 +51,7 @@ var networkLink = networkLinkFn{
 	AddrList:      netlink.AddrList,
 	AddrAdd:       netlink.AddrAdd,
 	LinkSubscribe: netlink.LinkSubscribe,
+	RouteAppend:   netlink.RouteAppend,
 }
 
 type networkConfiguration struct {
@@ -292,6 +296,73 @@ func interfacesRestoreDown(networkConfigs map[string]*networkConfiguration) erro
 	return nil
 }
 
+type RouteMask int
+
+const (
+	RouteMaskRoutedNetwork RouteMask = 16
+	RouteMaskPointToPoint  RouteMask = 30
+)
+
+func addRoute(nwconfig *networkConfiguration, mask RouteMask) error {
+	var (
+		err             error
+		networkSrc      net.IP
+		networkGateway  net.IP
+		networkScope    netlink.Scope
+		networkProtocol netlink.RouteProtocol
+		routeStr        string
+	)
+
+	networkMask := net.CIDRMask(int(mask), 32)
+	networkAddr := nwconfig.localAddr.Mask(networkMask)
+
+	switch mask {
+	case RouteMaskRoutedNetwork:
+		// no protocol set in order to be identical to previous
+		// configuration
+		networkGateway = *nwconfig.lldpPeer
+		routeStr = " gateway " + networkGateway.String()
+
+	case RouteMaskPointToPoint:
+		// use protocol 'kernel' to create an identical /30 route as
+		// added by the kernel
+		networkProtocol = unix.RTPROT_KERNEL
+		networkScope = netlink.SCOPE_LINK
+		networkSrc = *nwconfig.localAddr
+	}
+
+	newRoute := &netlink.Route{
+		LinkIndex: nwconfig.link.Attrs().Index,
+		Scope:     networkScope,
+		Protocol:  networkProtocol,
+		Dst: &net.IPNet{
+			IP:   networkAddr,
+			Mask: networkMask,
+		},
+		Src: networkSrc,
+		Gw:  networkGateway,
+	}
+
+	routeStr = newRoute.Dst.String() + routeStr
+
+	if err = networkLink.RouteAppend(newRoute); err == nil {
+		klog.V(3).Infof("Configured route %s for interface '%s'",
+			routeStr, nwconfig.link.Attrs().Name)
+	} else {
+		if errors.Is(err, os.ErrExist) {
+			var noerr error
+			err = noerr
+			klog.V(3).Infof("Route %s already exists for interface '%s'",
+				routeStr, nwconfig.link.Attrs().Name)
+		} else {
+			klog.Warningf("Could not add route %s for interface '%s': %v",
+				routeStr, nwconfig.link.Attrs().Name, err)
+		}
+	}
+
+	return err
+}
+
 func configureInterfaces(networkConfigs map[string]*networkConfiguration) (int, int) {
 	configured := 0
 
@@ -313,11 +384,10 @@ func configureInterfaces(networkConfigs map[string]*networkConfiguration) (int, 
 
 		for _, addr := range addrs {
 			if nwconfig.localAddr.Equal(addr.IPNet.IP) {
-				klog.Infof("Interface '%s' already configured '%s'\n",
+				klog.Infof("Interface '%s' already configured with address %s",
 					ifname, addr.IPNet.String())
 
 				foundExisting = true
-				configured++
 
 				break
 			}
@@ -330,16 +400,28 @@ func configureInterfaces(networkConfigs map[string]*networkConfiguration) (int, 
 					Mask: net.CIDRMask(30, 32),
 				},
 			}
+			// AddrAdd will add the corresponding /30 network route
 			if err := networkLink.AddrAdd(nwconfig.link, newlinkaddr); err != nil {
-				klog.Warningf("Could not configure address '%s' to interface '%s': %v\n",
+				klog.Warningf("Could not configure address %s for interface '%s': %v",
 					nwconfig.localAddr.String(), ifname, err)
 				continue
 			}
-			configured++
 
-			klog.Infof("Configured address '%s' to interface '%s'\n",
-				nwconfig.localAddr.String(), ifname)
+			klog.Infof("Configured address and route %s for interface '%s'",
+				newlinkaddr.IPNet.String(), ifname)
+		} else {
+			// IP address exists, but we need to ensure the
+			// existence of the corresponding /30 network route
+			if err = addRoute(nwconfig, RouteMaskPointToPoint); err != nil {
+				continue
+			}
 		}
+
+		if err = addRoute(nwconfig, RouteMaskRoutedNetwork); err != nil {
+			continue
+		}
+
+		configured++
 	}
 
 	return configured, len(networkConfigs)

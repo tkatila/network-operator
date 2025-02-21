@@ -324,6 +324,10 @@ func fakeLinkAddrAddErr(link netlink.Link, addr *netlink.Addr) error {
 	return fmt.Errorf("I'm broken")
 }
 
+func fakeRouteAppend(route *netlink.Route) error {
+	return nil
+}
+
 var fakeAddrsAdded []*netlink.Addr
 
 func fakeLinkAddrAdd(link netlink.Link, addr *netlink.Addr) error {
@@ -345,6 +349,7 @@ func fakeLinkAddrAdd(link netlink.Link, addr *netlink.Addr) error {
 func TestConfigureInterfaces(t *testing.T) {
 	networkLink.AddrList = fakeLinkAddrList
 	networkLink.AddrAdd = fakeLinkAddrAdd
+	networkLink.RouteAppend = fakeRouteAppend
 
 	fakeNetworkData := getFakeNetworkData()
 
