@@ -1,3 +1,6 @@
+# Copyright (c) 2025 Intel Corporation
+# SPDX-License-Identifier: MIT
+
 # Build the discover binary
 FROM golang:1.22 AS builder
 
@@ -21,14 +24,20 @@ COPY pkg/ pkg/
 
 # Build
 RUN CGO_ENABLED=1 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -a -o discover cmd/discover/main.go cmd/discover/gaudinet.go cmd/discover/network.go
+RUN go run github.com/google/go-licenses save ./... --save_path=licenses || true
 
 # TODO: consider using some other base image with required libraries copied into it.
 FROM debian:stable-slim
 WORKDIR /
 
-RUN apt-get update && apt-get install -y --no-install-recommends libpcap0.8 && rm -rf /var/lib/apt/lists/*
+RUN sed -i 's/\(Types: deb\).*/\1 deb-src/' /etc/apt/sources.list.d/debian.sources && \
+    apt-get update && apt-get install -y --no-install-recommends libpcap0.8 && \
+    mkdir /source && cd /source && \
+    apt source libdbus-1-3 --download-only && \
+    rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /workspace/discover .
+COPY --from=builder /workspace/licenses /licenses
 
 USER root
 
