@@ -89,7 +89,17 @@ func main() {
 		c.NextProtos = []string{"http/1.1"}
 	}
 
-	tlsOpts := []func(*tls.Config){}
+	tlsOpts := []func(*tls.Config){
+		func(cfg *tls.Config) {
+			cfg.MinVersion = tls.VersionTLS12
+			cfg.MaxVersion = tls.VersionTLS12
+			cfg.CipherSuites = []uint16{
+				tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+				tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
+			}
+		},
+	}
+
 	if !enableHTTP2 {
 		tlsOpts = append(tlsOpts, disableHTTP2)
 	}
