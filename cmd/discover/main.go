@@ -22,8 +22,10 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"os/signal"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -213,9 +215,19 @@ func cmdRun(cmd *cobra.Command, args []string) error {
 
 		klog.Infof("Configurations done. Idling...")
 
-		for {
-			time.Sleep(time.Second)
-		}
+		defer func() {
+			klog.Info("Remove NFD label file")
+
+			err := os.Remove(nfdLabelFile)
+			if err != nil {
+				klog.Warningf("Failed to remove NFD label file: %+v\n", err)
+			}
+		}()
+
+		term := make(chan os.Signal, 1)
+
+		signal.Notify(term, os.Interrupt, syscall.SIGTERM)
+		<-term
 	}
 
 	return nil
