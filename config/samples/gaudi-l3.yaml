@@ -1,7 +1,7 @@
 apiVersion: network.intel.com/v1alpha1
 kind: NetworkConfiguration
 metadata:
-  name: netconf-gaudi-scale-out
+  name: netconf-gaudi-scale-out-l3
 spec:
   configurationType: gaudi-so
   gaudiScaleOut:

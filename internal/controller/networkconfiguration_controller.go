@@ -50,7 +50,8 @@ import (
 // NetworkConfigurationReconciler reconciles a NetworkConfiguration object
 type NetworkConfigurationReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
+	Scheme    *runtime.Scheme
+	Namespace string
 }
 
 const (
@@ -105,10 +106,9 @@ func addHostVolume(ds *apps.DaemonSet, volumeType v1.HostPathType, volumeName, h
 	}
 }
 
-func updateGaudiScaleOutDaemonSet(ds *apps.DaemonSet, netconf *networkv1alpha1.NetworkConfiguration) {
+func updateGaudiScaleOutDaemonSet(ds *apps.DaemonSet, netconf *networkv1alpha1.NetworkConfiguration, namespace string) {
 	ds.Name = netconf.Name
-	ds.ObjectMeta.Namespace = netconf.Namespace
-	ds.ObjectMeta.Name = netconf.Name
+	ds.ObjectMeta.Namespace = namespace
 
 	if len(netconf.Spec.NodeSelector) > 0 {
 		ds.Spec.Template.Spec.NodeSelector = netconf.Spec.NodeSelector
@@ -137,7 +137,7 @@ func (r *NetworkConfigurationReconciler) createGaudiScaleOutDaemonset(netconf cl
 
 	log.Info("Creating Gaudi Scale-Out DaemonSet", "name", cr.Name)
 
-	updateGaudiScaleOutDaemonSet(ds, cr)
+	updateGaudiScaleOutDaemonSet(ds, cr, r.Namespace)
 
 	if err := ctrl.SetControllerReference(netconf.(metav1.Object), ds, r.Scheme); err != nil {
 		log.Error(err, "unable to set controller reference")
@@ -174,7 +174,7 @@ func (r *NetworkConfigurationReconciler) updateDaemonSet(ds *apps.DaemonSet, net
 
 	switch cr.Spec.ConfigurationType {
 	case gaudiScaleOutSelection:
-		updateGaudiScaleOutDaemonSet(ds, cr)
+		updateGaudiScaleOutDaemonSet(ds, cr, r.Namespace)
 	default:
 		panic("Unknown configuration type, this shouldn't happen!")
 	}
@@ -244,7 +244,7 @@ func (r *NetworkConfigurationReconciler) Reconcile(ctx context.Context, req ctrl
 	// fetch possible existing daemonset
 
 	var olderDs apps.DaemonSetList
-	if err := r.List(ctx, &olderDs, client.InNamespace(req.Namespace), client.MatchingFields{ownerKey: req.Name}); err != nil {
+	if err := r.List(ctx, &olderDs, client.InNamespace(r.Namespace), client.MatchingFields{ownerKey: req.Name}); err != nil {
 		log.Error(err, "unable to list child DaemonSets")
 
 		return ctrl.Result{}, err

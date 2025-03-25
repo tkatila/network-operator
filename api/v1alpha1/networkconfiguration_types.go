@@ -80,6 +80,7 @@ type NetworkConfigurationStatus struct {
 }
 
 //+kubebuilder:object:root=true
+//+kubebuilder:resource:path=networkconfigurations,scope=Cluster
 //+kubebuilder:subresource:status
 
 // NetworkConfiguration is the Schema for the networkconfigurations API

@@ -44,6 +44,10 @@ var (
 	setupLog = ctrl.Log.WithName("setup")
 )
 
+const (
+	defaultOperatorNamespace = "intel-network-operator"
+)
+
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
@@ -100,6 +104,13 @@ func main() {
 		},
 	}
 
+	ns := os.Getenv("OPERATOR_NAMESPACE")
+	if ns == "" {
+		ns = defaultOperatorNamespace
+	}
+
+	setupLog.Info("Using namespace:", "ns", ns)
+
 	if !enableHTTP2 {
 		tlsOpts = append(tlsOpts, disableHTTP2)
 	}
@@ -149,8 +160,9 @@ func main() {
 	}
 
 	if err = (&controller.NetworkConfigurationReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
+		Client:    mgr.GetClient(),
+		Scheme:    mgr.GetScheme(),
+		Namespace: ns,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "NetworkConfiguration")
 		os.Exit(1)

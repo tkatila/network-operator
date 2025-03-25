@@ -45,11 +45,12 @@ spec:
         - mountPath: /etc/kubernetes/node-feature-discovery/features.d/
           name: nfd-features
         securityContext:
-          allowPrivilegeEscalation: true
+          allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
           capabilities:
+            drop:
+              - ALL
             add:
               - NET_ADMIN
               - NET_RAW
-              - SYS_CHROOT
       terminationGracePeriodSeconds: 10
