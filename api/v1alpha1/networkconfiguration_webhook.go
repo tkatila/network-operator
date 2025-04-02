@@ -16,6 +16,7 @@ package v1alpha1
 
 import (
 	"net/netip"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -43,6 +44,12 @@ type emptyNodeSelectorError struct{}
 
 func (e emptyNodeSelectorError) Error() string {
 	return "empty node-selector"
+}
+
+type invalidNodeSelector struct{}
+
+func (e invalidNodeSelector) Error() string {
+	return "invalid node selector"
 }
 
 type unknownConfigurationError struct{}
@@ -81,6 +88,10 @@ func (r *NetworkConfiguration) Default() {
 
 var _ webhook.Validator = &NetworkConfiguration{}
 
+var labelHostRegex = regexp.MustCompile(`^([A-Za-z0-9][A-Za-z0-9_\.]*)?[A-Za-z0-9]$`)
+var labelPathRegex = regexp.MustCompile(`^([A-Za-z0-9][A-Za-z0-9-\._\/]*)?[A-Za-z0-9]$`)
+var labelValueRegex = regexp.MustCompile(`^(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?$`)
+
 func validateGaudiSoSpec(s GaudiScaleOutSpec) error {
 	if len(s.L3IpRange) > 0 {
 		if !strings.Contains(s.L3IpRange, "/") {
@@ -106,9 +117,39 @@ func validateGaudiSoSpec(s GaudiScaleOutSpec) error {
 	return nil
 }
 
+func validateNodeSelector(nodeSelector map[string]string) error {
+	if len(nodeSelector) == 0 {
+		return emptyNodeSelectorError{}
+	}
+
+	for k, v := range nodeSelector {
+		if len(k) > 253 || len(v) > 63 {
+			return invalidNodeSelector{}
+		}
+
+		if !labelValueRegex.MatchString(v) {
+			return invalidNodeSelector{}
+		}
+
+		parts := strings.SplitN(k, "/", 2)
+		if len(parts) == 1 && !labelHostRegex.MatchString(parts[0]) {
+			return invalidNodeSelector{}
+		} else if len(parts) == 2 {
+			if !labelHostRegex.MatchString(parts[0]) {
+				return invalidNodeSelector{}
+			}
+			if !labelPathRegex.MatchString(parts[1]) {
+				return invalidNodeSelector{}
+			}
+		}
+	}
+
+	return nil
+}
+
 func validateSpec(s NetworkConfigurationSpec) (admission.Warnings, error) {
-	if len(s.NodeSelector) == 0 {
-		return nil, emptyNodeSelectorError{}
+	if err := validateNodeSelector(s.NodeSelector); err != nil {
+		return nil, err
 	}
 
 	switch s.ConfigurationType {

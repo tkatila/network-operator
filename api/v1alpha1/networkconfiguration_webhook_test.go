@@ -82,6 +82,62 @@ var _ = Describe("NetworkConfiguration Webhook", func() {
 			Expect(nc.ValidateCreate()).Error().To(BeNil())
 		})
 
+		It("Should accept good nodeSelectors", func() {
+			nc := NetworkConfiguration{
+				Spec: NetworkConfigurationSpec{
+					ConfigurationType: gaudiScaleOut,
+					GaudiScaleOut: GaudiScaleOutSpec{
+						Layer:     "L3BGP",
+						L3IpRange: "10.20.0.0/20",
+					},
+					NodeSelector: map[string]string{},
+				},
+			}
+
+			goodValues := []map[string]string{
+				{"intel.feature.node.kubernetes.io/gaudi-ready": "true"},
+				{"gpu.intel.com": "xpu"},
+			}
+
+			for _, v := range goodValues {
+				nc.Spec.NodeSelector = v
+
+				Expect(nc.ValidateCreate()).Error().To(BeNil(), "selector: %+v", v)
+			}
+		})
+
+		It("Should prevent bad nodeSelectors", func() {
+			nc := NetworkConfiguration{
+				Spec: NetworkConfigurationSpec{
+					ConfigurationType: gaudiScaleOut,
+					GaudiScaleOut: GaudiScaleOutSpec{
+						Layer:     "L3BGP",
+						L3IpRange: "10.20.0.0/20",
+					},
+					NodeSelector: map[string]string{
+						"foobar.com?foo": "bar",
+					},
+				},
+			}
+
+			badValues := []map[string]string{
+				{"__.com/foo": "bar"},
+				{"foo.com_": "bar"},
+				{"foo.com": "_bar"},
+				{"foo.com": "???foo"},
+				{"foo.com": "foo_"},
+				{"foo.com": "0123456789012345678901234567890123456789012345678901234567890123"},
+				{"foo.com/bar/plaaplaa_": "ok"},
+				{"foo.com_/bar": "ok"},
+			}
+
+			for _, v := range badValues {
+				nc.Spec.NodeSelector = v
+
+				Expect(nc.ValidateCreate()).Error().To(Not(BeNil()), "selector: %+v", v)
+			}
+		})
+
 		It("Should accept update with good values and fail with bad ones", func() {
 			nc := NetworkConfiguration{
 				Spec: NetworkConfigurationSpec{

@@ -92,6 +92,7 @@ spec:
                 type: object
               logLevel:
                 description: LogLevel sets the operator's log level.
+                maximum: 8
                 minimum: 0
                 type: integer
               nodeSelector:

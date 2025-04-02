@@ -120,6 +120,11 @@ func updateGaudiScaleOutDaemonSet(ds *apps.DaemonSet, netconf *networkv1alpha1.N
 
 	args := []string{"--configure=true", "--keep-running", "--mode=" + netconf.Spec.GaudiScaleOut.Layer}
 
+	// Add log level to the args
+	if netconf.Spec.LogLevel > 0 {
+		args = append(args, fmt.Sprintf("--v=%d", netconf.Spec.LogLevel))
+	}
+
 	switch netconf.Spec.GaudiScaleOut.Layer {
 	case layerSelectionL3:
 		args = append(args, "--wait=90", fmt.Sprintf("--gaudinet=%s", gaudinetPathContainer))

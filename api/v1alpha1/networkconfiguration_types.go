@@ -28,6 +28,8 @@ type NetworkConfigurationSpec struct {
 	ConfigurationType string `json:"configurationType"`
 
 	// Select which nodes the operator should target. Align with labels created by NFD.
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:items:MinItems=1
 	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
 
 	// Gaudi Scale-Out specific settings. Only valid when configuration type is 'gaudi-so'
@@ -38,6 +40,7 @@ type NetworkConfigurationSpec struct {
 
 	// LogLevel sets the operator's log level.
 	// +kubebuilder:validation:Minimum=0
+	// +kubebuilder:validation:Maximum=8
 	LogLevel int `json:"logLevel,omitempty"`
 }
 
