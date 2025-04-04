@@ -1,4 +1,4 @@
-module github.com/intel/intel-network-operator-for-kubernetes
+module github.com/intel/network-operator
 
 go 1.23.7
 

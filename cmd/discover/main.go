@@ -31,7 +31,7 @@ import (
 	"github.com/spf13/cobra"
 	"k8s.io/klog/v2"
 
-	"github.com/intel/intel-network-operator-for-kubernetes/pkg/lldp"
+	"github.com/intel/network-operator/pkg/lldp"
 )
 
 type layerMode int

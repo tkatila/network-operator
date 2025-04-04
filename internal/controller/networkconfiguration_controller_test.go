@@ -25,7 +25,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	networkv1alpha1 "github.com/intel/intel-network-operator-for-kubernetes/api/v1alpha1"
+	networkv1alpha1 "github.com/intel/network-operator/api/v1alpha1"
 )
 
 var _ = Describe("NetworkConfiguration Controller", func() {

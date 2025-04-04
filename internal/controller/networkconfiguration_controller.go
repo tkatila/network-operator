@@ -36,8 +36,8 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/google/go-cmp/cmp"
-	networkv1alpha1 "github.com/intel/intel-network-operator-for-kubernetes/api/v1alpha1"
-	daemonsets "github.com/intel/intel-network-operator-for-kubernetes/config/daemonsets"
+	networkv1alpha1 "github.com/intel/network-operator/api/v1alpha1"
+	daemonsets "github.com/intel/network-operator/config/daemonsets"
 )
 
 //+kubebuilder:rbac:groups=network.intel.com,resources=networkconfigurations,verbs=get;list;watch;create;update;patch;delete

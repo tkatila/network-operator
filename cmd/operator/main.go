@@ -34,8 +34,8 @@ import (
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
-	networkv1alpha1 "github.com/intel/intel-network-operator-for-kubernetes/api/v1alpha1"
-	"github.com/intel/intel-network-operator-for-kubernetes/internal/controller"
+	networkv1alpha1 "github.com/intel/network-operator/api/v1alpha1"
+	"github.com/intel/network-operator/internal/controller"
 	//+kubebuilder:scaffold:imports
 )
 

@@ -21,7 +21,7 @@ import (
 	"testing"
 	"time"
 
-	api "github.com/intel/intel-network-operator-for-kubernetes/api/v1alpha1"
+	api "github.com/intel/network-operator/api/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 

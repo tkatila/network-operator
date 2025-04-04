@@ -125,7 +125,7 @@ its dependencies.
 Users can just run kubectl apply -f <URL for YAML BUNDLE> to install the project, i.e.:
 
 ```sh
-kubectl apply -f https://raw.githubusercontent.com/intel/intel-network-operator-for-kubernetes/<tag or branch>/dist/install.yaml
+kubectl apply -f https://raw.githubusercontent.com/intel/network-operator/<tag or branch>/dist/install.yaml
 ```
 
 ## Contributing
