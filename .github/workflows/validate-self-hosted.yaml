@@ -1,0 +1,14 @@
+name: validation self-hosted
+on:
+  pull_request:
+    branches:
+      - 'main'
+
+env:
+  LOCALBIN: /runners/tools/bin
+
+jobs:
+  validate:
+    uses: "./.github/workflows/validate-common.yaml"
+    with:
+      runner: self-hosted

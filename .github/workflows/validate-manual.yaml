@@ -1,0 +1,20 @@
+name: validation manual
+on:
+  workflow_dispatch:
+    inputs:
+      workflow_runner:
+        description: 'Workflow runner'
+        required: true
+        type: choice
+        options:
+        - ubuntu-latest
+        - self-hosted
+
+env:
+  LOCALBIN: /runners/tools/bin
+
+jobs:
+  validate:
+    uses: "./.github/workflows/validate-common.yaml"
+    with:
+      runner: ${{ inputs.workflow_runner }}

@@ -1,0 +1,11 @@
+name: validation public
+on:
+  pull_request:
+    branches:
+      - 'main'
+
+jobs:
+  validate:
+    uses: "./.github/workflows/validate-common.yaml"
+    with:
+      runner: ubuntu-latest

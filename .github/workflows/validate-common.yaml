@@ -1,20 +1,22 @@
-name: validate
+name: validation common
 on:
-  pull_request:
-    branches:
-      - 'main'
+  workflow_call:
+    inputs:
+      runner:
+        required: true
+        type: string
 
 permissions:
   pull-requests: read # for golangci/golangci-lint-action to fetch pull requests
   contents: read
 
 env:
-  LOCALBIN: /runners/tools/bin
+  isubuntu: ${{ startsWith (inputs.runner, 'ubuntu') }}
 
 jobs:
   golangci:
     name: Run lint
-    runs-on: "self-hosted"
+    runs-on: ${{ inputs.runner }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
         with:
@@ -25,10 +27,13 @@ jobs:
           check-latest: true
           cache: false
       - run: |
+          sudo apt install libpcap-dev
+        if: ${{ env.isubuntu == 'true' }}
+      - run: |
           make lint
   build:
     name: Build all
-    runs-on: "self-hosted"
+    runs-on: ${{ inputs.runner }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
         with:
@@ -38,12 +43,15 @@ jobs:
           go-version-file: go.mod
           check-latest: true
           cache: false
+      - run: |
+          sudo apt install libpcap-dev
+        if: ${{ env.isubuntu == 'true' }}
       - run: make build
       - run: make operator-image
       - run: make discover-image
   tests:
     name: Run tests
-    runs-on: "self-hosted"
+    runs-on: ${{ inputs.runner }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
         with:
@@ -53,6 +61,9 @@ jobs:
           go-version-file: go.mod
           check-latest: true
           cache: false
+      - run: |
+          sudo apt install libpcap-dev
+        if: ${{ env.isubuntu == 'true' }}
       - name: Run tests
         run: |
           make envtest
