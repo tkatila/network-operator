@@ -45,11 +45,12 @@ RUN go get github.com/google/go-licenses && \
 
 # TODO: consider using some other base image with required libraries copied into it.
 FROM debian:stable-slim
-WORKDIR /
+
+RUN mkdir /source
+WORKDIR /source
 
 RUN sed -i 's/\(Types: deb\).*/\1 deb-src/' /etc/apt/sources.list.d/debian.sources && \
     apt-get update && apt-get install -y --no-install-recommends libpcap0.8 && \
-    mkdir /source && cd /source && \
     apt source libdbus-1-3 --download-only && \
     rm -rf /var/lib/apt/lists/*
 

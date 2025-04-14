@@ -135,6 +135,15 @@ lint-fix: golangci-lint ## Run golangci-lint linter and perform fixes
 fuzz:
 	go test -fuzz=FuzzNetworkConfigurationGaudiSO -fuzztime=30s ./test/fuzz
 
+DEPL_YAML_DIR ?= trivy-depl
+
+.PHONY: deployments
+deployments: kustomize
+	rm -rf $(DEPL_YAML_DIR)
+	mkdir -p $(DEPL_YAML_DIR)
+	$(KUSTOMIZE) build config/default > $(DEPL_YAML_DIR)/operator.yaml
+	cat config/daemonsets/gaudi/internal/linkdiscovery.yaml > $(DEPL_YAML_DIR)/discovery.yaml
+
 ##@ Build
 
 .PHONY: build

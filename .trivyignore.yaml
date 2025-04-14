@@ -1,0 +1,55 @@
+misconfigurations:
+  - id: AVD-KSV-0049
+    statement: "operator requires access to configmaps"
+    paths:
+      - operator.yaml
+
+  - id: AVD-KSV-0048
+    statement: "operator requires access to various things"
+    paths:
+      - operator.yaml
+
+  - id: AVD-KSV-0013
+    statement: "using :latest is ok from repo"
+    paths:
+      - operator.yaml
+
+  - id: AVD-KSV-0009
+    statement: "host-network is required for linkdiscovery"
+    paths:
+      - discovery.yaml
+
+  - id: AVD-KSV-0012
+    statement: "linkdiscovery requires root account"
+    paths:
+      - discovery.yaml
+
+  - id: AVD-KSV-0022
+    statement: "linkdiscovery requires additional capabilities"
+    paths:
+      - discovery.yaml
+
+  - id: AVD-KSV-0023
+    statement: "linkdiscovery requires hostpath for NFD and Gaudi files"
+    paths:
+      - discovery.yaml
+
+  - id: AVD-KSV-0119
+    statement: "linkdiscovery requires NET_RAW to operate"
+    paths:
+      - discovery.yaml
+
+  - id: AVD-KSV-0104
+    statement: "linkdiscovery's seccomp is defined in the operator namespace"
+    paths:
+      - discovery.yaml
+
+  - id: AVD-DS-0002
+    statement: "linkdiscovery's requires root"
+
+  # No need to restrict registries yet
+  - id: AVD-KSV-0032
+  - id: AVD-KSV-0033
+  - id: AVD-KSV-0034
+  - id: AVD-KSV-0035
+  - id: AVD-KSV-0013
