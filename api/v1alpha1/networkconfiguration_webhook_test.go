@@ -43,12 +43,23 @@ var _ = Describe("NetworkConfiguration Webhook", func() {
 			Expect(nc.ValidateCreate()).Error().NotTo(BeNil())
 		})
 
-		It("Should deny if there's a bad IP range", func() {
+		It("Should deny if the configuration type is invalid InputVal", func() {
+			nc := NetworkConfiguration{}
+			nc.Spec.NodeSelector = map[string]string{
+				"foo": "bar",
+			}
+
+			nc.Spec.ConfigurationType = "foo bar"
+
+			Expect(nc.ValidateCreate()).Error().To(BeEquivalentTo(unknownConfigurationError{}))
+		})
+
+		It("Should deny if there's a bad IP range InputVal", func() {
 			nc := NetworkConfiguration{
 				Spec: NetworkConfigurationSpec{
 					ConfigurationType: gaudiScaleOut,
 					GaudiScaleOut: GaudiScaleOutSpec{
-						Layer: "L3BGP",
+						Layer: "L3",
 					},
 					NodeSelector: map[string]string{
 						"foo": "bar",
@@ -106,12 +117,12 @@ var _ = Describe("NetworkConfiguration Webhook", func() {
 			}
 		})
 
-		It("Should prevent bad nodeSelectors", func() {
+		It("Should prevent bad nodeSelectors InputVal", func() {
 			nc := NetworkConfiguration{
 				Spec: NetworkConfigurationSpec{
 					ConfigurationType: gaudiScaleOut,
 					GaudiScaleOut: GaudiScaleOutSpec{
-						Layer:     "L3BGP",
+						Layer:     "L3",
 						L3IpRange: "10.20.0.0/20",
 					},
 					NodeSelector: map[string]string{
@@ -138,7 +149,7 @@ var _ = Describe("NetworkConfiguration Webhook", func() {
 			}
 		})
 
-		It("Should accept update with good values and fail with bad ones", func() {
+		It("Should accept update with good values and fail with bad ones InputVal", func() {
 			nc := NetworkConfiguration{
 				Spec: NetworkConfigurationSpec{
 					ConfigurationType: gaudiScaleOut,

@@ -165,6 +165,14 @@ func cmdRun(cmd *cobra.Command, args []string) error {
 
 	cmd.SilenceUsage = true
 
+	if _, err = os.Stat(nfdLabelFile); err == nil {
+		klog.Infof("NFD label file already exists, removing it...\n")
+
+		if err = os.Remove(nfdLabelFile); err != nil {
+			klog.Warningf("Failed to remove NFD label file: %+v\n", err)
+		}
+	}
+
 	networkConfigs := getNetworkConfigs(config.ifaces)
 
 	if err := interfacesUp(networkConfigs); err != nil {

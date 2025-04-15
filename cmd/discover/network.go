@@ -44,6 +44,8 @@ type networkLinkFn struct {
 	AddrAdd       func(link netlink.Link, addr *netlink.Addr) error
 	LinkSubscribe func(ch chan<- netlink.LinkUpdate, done <-chan struct{}) error
 	RouteAppend   func(route *netlink.Route) error
+	LinkSetUp     func(link netlink.Link) error
+	LinkSetDown   func(link netlink.Link) error
 }
 
 var networkLink = networkLinkFn{
@@ -52,6 +54,8 @@ var networkLink = networkLinkFn{
 	AddrAdd:       netlink.AddrAdd,
 	LinkSubscribe: netlink.LinkSubscribe,
 	RouteAppend:   netlink.RouteAppend,
+	LinkSetUp:     netlink.LinkSetUp,
+	LinkSetDown:   netlink.LinkSetDown,
 }
 
 type networkConfiguration struct {
@@ -260,7 +264,7 @@ func interfacesUp(networkConfigs map[string]*networkConfiguration) error {
 	for _, nwconfig := range networkConfigs {
 		nwconfig.expectResponse = false
 		if nwconfig.link.Attrs().Flags&net.FlagUp == 0 {
-			if err := netlink.LinkSetUp(nwconfig.link); err == nil {
+			if err := networkLink.LinkSetUp(nwconfig.link); err == nil {
 				nwconfig.expectResponse = true
 			} else {
 				klog.Warningf("Cannot set link '%s' up: %v", nwconfig.link.Attrs().Name, err)
@@ -283,7 +287,7 @@ func interfacesRestoreDown(networkConfigs map[string]*networkConfiguration) erro
 
 	for _, nwconfig := range networkConfigs {
 		if nwconfig.origState&net.FlagUp == 0 && nwconfig.link.Attrs().Flags&net.FlagUp != 0 {
-			if err := netlink.LinkSetDown(nwconfig.link); err == nil {
+			if err := networkLink.LinkSetDown(nwconfig.link); err == nil {
 				klog.Infof("Setting link '%s' back down", nwconfig.link.Attrs().Name)
 			} else {
 				klog.Warningf("Cannot set link '%s' back down: %v", nwconfig.link.Attrs().Name, err)
@@ -318,6 +322,9 @@ func addRoute(nwconfig *networkConfiguration, mask RouteMask) error {
 	)
 
 	networkMask := net.CIDRMask(int(mask), 32)
+	if nwconfig.localAddr == nil {
+		return fmt.Errorf("interface '%s' has no local address", nwconfig.link.Attrs().Name)
+	}
 	networkAddr := nwconfig.localAddr.Mask(networkMask)
 
 	switch mask {

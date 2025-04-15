@@ -17,6 +17,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"os"
@@ -388,7 +389,7 @@ func TestConfigureInterfaces(t *testing.T) {
 	}
 }
 
-func TestConfigureInterfacesErr(t *testing.T) {
+func TestConfigureInterfacesErrors(t *testing.T) {
 	ifName := "eth_a"
 	fnd := getFakeNetworkData()[ifName]
 
@@ -413,5 +414,174 @@ func TestConfigureInterfacesErr(t *testing.T) {
 
 	if configured != 0 {
 		t.Error("configure succeeded when error should have been returned")
+	}
+}
+
+func TestAddRouteErrors(t *testing.T) {
+	ifName := "eth_a"
+	fnd := getFakeNetworkData()[ifName]
+
+	networkLink.AddrList = fakeLinkAddrList
+	networkLink.AddrAdd = fakeLinkAddrAdd
+	networkLink.RouteAppend = func(route *netlink.Route) error {
+		return fmt.Errorf("oops..")
+	}
+
+	ip, _, _ := net.ParseCIDR("10.0.0.1/24")
+
+	fnd.nwconfig.localAddr = &ip
+
+	err := addRoute(&fnd.nwconfig, RouteMaskPointToPoint)
+
+	if err == nil {
+		t.Error("add route succeeded while it shouldn't have")
+	}
+
+	networkLink.RouteAppend = func(route *netlink.Route) error {
+		return os.ErrExist
+	}
+
+	err = addRoute(&fnd.nwconfig, RouteMaskPointToPoint)
+
+	if err != nil {
+		t.Error("add route failed while it shouldn't have")
+	}
+
+	fnd.nwconfig.localAddr = nil
+
+	err = addRoute(&fnd.nwconfig, RouteMaskPointToPoint)
+
+	if err == nil {
+		t.Error("add route succeeded while it shouldn't have")
+	}
+}
+
+func TestNoGaudiDevicesErrors(t *testing.T) {
+	// invalid directory to make Glob fail
+	os.Setenv("SYSFS_ROOT", "\\\\\\")
+	defer os.Unsetenv("SYSFS_ROOT")
+
+	devs := getNetworks()
+	if len(devs) > 0 {
+		t.Errorf("no devices should have been found: %s", devs)
+	}
+}
+
+func TestLogResults(t *testing.T) {
+	cmd := &cmdConfig{
+		ctx:          context.Background(),
+		gaudinetfile: "gaudinet.json",
+		ifaces:       []string{"eth_a", "eth_b", "eth_c"},
+		mode:         L2,
+	}
+
+	netConfs := getFakeNetworkDataConfigs()
+
+	logResults(cmd, netConfs)
+
+	cmd.mode = L3
+
+	logResults(cmd, netConfs)
+
+	t.Log("LogResults is just executed")
+}
+
+func TestAllLinksResponded(t *testing.T) {
+	netConfs := getFakeNetworkDataConfigs()
+
+	for _, nwconfig := range netConfs {
+		nwconfig.expectResponse = true
+		break
+	}
+
+	if allLinksResponded(netConfs) {
+		t.Error("expected all links not to respond")
+	}
+
+	for _, nwconfig := range netConfs {
+		nwconfig.expectResponse = false
+	}
+
+	if !allLinksResponded(netConfs) {
+		t.Error("expected all links to respond")
+	}
+}
+
+func TestInterfaceUp(t *testing.T) {
+	netConfs := getFakeNetworkDataConfigs()
+
+	networkLink.LinkSubscribe = func(ch chan<- netlink.LinkUpdate, done <-chan struct{}) error {
+		return nil
+	}
+	networkLink.LinkSetUp = func(link netlink.Link) error {
+		return nil
+	}
+
+	err := interfacesUp(netConfs)
+	if err != nil {
+		t.Error("interfacesUp should have passed")
+	}
+}
+
+func TestInterfaceUpErrors(t *testing.T) {
+	netConfs := getFakeNetworkDataConfigs()
+
+	networkLink.LinkSubscribe = func(ch chan<- netlink.LinkUpdate, done <-chan struct{}) error {
+		return fmt.Errorf("error subscribing")
+	}
+
+	err := interfacesUp(netConfs)
+	if err == nil {
+		t.Error("interfacesUp should have failed")
+	}
+
+	networkLink.LinkSubscribe = netlink.LinkSubscribe
+	networkLink.LinkSetUp = func(link netlink.Link) error {
+		return fmt.Errorf("error link set up")
+	}
+
+	err = interfacesUp(netConfs)
+	if err != nil {
+		t.Error("interfacesUp should have succeeded")
+	}
+}
+
+func TestInterfaceDown(t *testing.T) {
+	netConfs := getFakeNetworkDataConfigs()
+
+	networkLink.LinkSubscribe = func(ch chan<- netlink.LinkUpdate, done <-chan struct{}) error {
+		return nil
+	}
+	networkLink.LinkSetDown = func(link netlink.Link) error {
+		return nil
+	}
+
+	for _, nwconfig := range netConfs {
+		nwconfig.link.Attrs().Flags ^= net.FlagUp
+	}
+
+	err := interfacesRestoreDown(netConfs)
+	if err != nil {
+		t.Error("interfacesRestoreDown should have succeeded")
+	}
+}
+
+func TestInterfaceDownErrors(t *testing.T) {
+	netConfs := getFakeNetworkDataConfigs()
+
+	networkLink.LinkSubscribe = func(ch chan<- netlink.LinkUpdate, done <-chan struct{}) error {
+		return fmt.Errorf("no subscribing")
+	}
+	networkLink.LinkSetDown = func(link netlink.Link) error {
+		return fmt.Errorf("cant set down")
+	}
+
+	for _, nwconfig := range netConfs {
+		nwconfig.link.Attrs().Flags ^= net.FlagUp
+	}
+
+	err := interfacesRestoreDown(netConfs)
+	if err == nil {
+		t.Error("interfacesRestoreDown should have failed")
 	}
 }

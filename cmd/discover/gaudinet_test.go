@@ -17,6 +17,7 @@
 package main
 
 import (
+	"fmt"
 	"net"
 	"os"
 	"path/filepath"
@@ -57,6 +58,28 @@ func TestGenerateGaudiNet(t *testing.T) {
 	}
 }
 
+func TestGenerateGaudiNetMissingLocalAddr(t *testing.T) {
+	nwconfigs, _ := fakenetworkconfigs()
+
+	emptyOutput := "{\"NIC_NET_CONFIG\":[]}"
+
+	nwconfigs["eth1234"].localAddr = nil
+
+	json, _ := GenerateGaudiNet(nwconfigs)
+	if string(json) != emptyOutput {
+		t.Errorf("Got invalid GaudiNet output '%s' vs '%s'", json, emptyOutput)
+	}
+
+	validIp := net.IPv4(10, 120, 0, 1)
+	nwconfigs["eth1234"].localAddr = &validIp
+	nwconfigs["eth1234"].peerHWAddr = nil
+
+	json, _ = GenerateGaudiNet(nwconfigs)
+	if string(json) != emptyOutput {
+		t.Errorf("Got invalid GaudiNet output '%s' vs '%s'", json, emptyOutput)
+	}
+}
+
 func TestWriteGaudiNet(t *testing.T) {
 	dir, err := os.MkdirTemp("", "gaudinet.")
 	if err != nil {
@@ -78,5 +101,40 @@ func TestWriteGaudiNet(t *testing.T) {
 
 	if string(json) != expectedoutput {
 		t.Errorf("Expected tmp file contents '%s', returned '%s': %v", expectedoutput, json, err)
+	}
+}
+
+func TestWriteGaudiNetErrors(t *testing.T) {
+	dir, err := os.MkdirTemp("", "gaudinet.")
+	if err != nil {
+		t.Errorf("cannot create tmp dir: %v", err)
+	}
+	defer os.RemoveAll(dir)
+
+	nwconfigs, _ := fakenetworkconfigs()
+
+	err = WriteGaudiNet("", nwconfigs)
+	if err == nil {
+		t.Error("Write succeeded with empty filename")
+	}
+}
+
+func TestGaudiNetMarshalErrors(t *testing.T) {
+	JsonMarshal = func(v any) ([]byte, error) {
+		return nil, fmt.Errorf("error")
+	}
+
+	dir, err := os.MkdirTemp("", "gaudinet.")
+	if err != nil {
+		t.Errorf("cannot create tmp dir: %v", err)
+	}
+	defer os.RemoveAll(dir)
+
+	nwconfigs, _ := fakenetworkconfigs()
+	file := filepath.Join(dir, "gaudinet.txt")
+
+	err = WriteGaudiNet(file, nwconfigs)
+	if err == nil {
+		t.Error("Write succeeded while it should have")
 	}
 }

@@ -39,6 +39,8 @@ type GaudiNetEntry struct {
 var (
 	gaudinetFileName string = "gaudinet.json"
 	gaudinetFilePath string = filepath.Join("/etc", gaudinetFileName)
+
+	JsonMarshal func(v any) ([]byte, error) = json.Marshal
 )
 
 func GenerateGaudiNet(networkConfigs map[string]*networkConfiguration) ([]byte, error) {
@@ -65,7 +67,7 @@ func GenerateGaudiNet(networkConfigs map[string]*networkConfiguration) ([]byte, 
 		gaudinet.Config = append(gaudinet.Config, net)
 	}
 
-	gaudinetContents, err := json.Marshal(gaudinet)
+	gaudinetContents, err := JsonMarshal(gaudinet)
 	if err != nil {
 		return nil, fmt.Errorf("Could not marshal '%s' json", gaudinetFilePath)
 	}
