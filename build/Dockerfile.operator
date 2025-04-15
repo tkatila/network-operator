@@ -5,6 +5,11 @@
 FROM golang:1.23 AS builder
 ARG TARGETOS
 ARG TARGETARCH
+ENV GO111MODULE=on
+ENV CGOFLAGS="-trimpath"
+ENV GCFLAGS="all=-spectre=all -N -l"
+ENV ASMFLAGS="all=-spectre=all"
+ENV LDFLAGS="all=-w -s"
 
 WORKDIR /workspace
 # Copy the Go Modules manifests
@@ -24,7 +29,17 @@ COPY internal/controller/ internal/controller/
 # was called. For example, if we call make docker-build in a local env which has the Apple Silicon M1 SO
 # the docker BUILDPLATFORM arg will be linux/arm64 when for Apple x86 it will be linux/amd64. Therefore,
 # by leaving it empty we can ensure that the container and binary shipped on it will have the same platform.
-RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -a -o manager cmd/operator/main.go
+RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} GO111MODULE=${GO111MODULE} \
+    go build $CGOFLAGS --gcflags="$GCFLAGS" --asmflags="$ASMFLAGS" --ldflags="$LDFLAGS"  -a -o manager \
+    cmd/operator/main.go
+
+# Verify binary build specs with checksec
+ENV CHECKSEC_REF="No RELRO,No Canary found,NX enabled,No PIE,N/A,N/A,No Symbols,N/A,0,0"
+RUN apt-get update -y && apt-get --no-install-recommends -y install file && \
+    wget -q https://raw.githubusercontent.com/slimm609/checksec/refs/heads/main/checksec.bash -O checksec && \
+    chmod +x checksec && \
+    ./checksec --file=/workspace/manager --output=csv | grep -q "$CHECKSEC_REF"
+
 RUN go get github.com/google/go-licenses && \
     go run github.com/google/go-licenses save ./... --save_path=licenses || \
     true

@@ -6,6 +6,11 @@ FROM golang:1.23 AS builder
 
 ARG TARGETOS
 ARG TARGETARCH
+ENV GO111MODULE=on
+ENV CGOFLAGS="-trimpath -mod=readonly -buildmode=pie"
+ENV GCFLAGS="all=-spectre=all -N -l"
+ENV ASMFLAGS="all=-spectre=all"
+ENV LDFLAGS="all=-linkmode=external -s -w"
 
 WORKDIR /workspace
 # Copy the Go Modules manifests
@@ -23,7 +28,17 @@ COPY cmd/discover/*.go cmd/discover/
 COPY pkg/ pkg/
 
 # Build
-RUN CGO_ENABLED=1 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -a -o discover cmd/discover/main.go cmd/discover/gaudinet.go cmd/discover/network.go
+RUN CGO_ENABLED=1 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} GO111MODULE=${GO111MODULE} \
+    go build $CGOFLAGS --gcflags="$GCFLAGS" --asmflags="$ASMFLAGS" --ldflags="$LDFLAGS"  -a -o discover \
+    cmd/discover/main.go cmd/discover/gaudinet.go cmd/discover/network.go
+
+# Verify binary build specs with checksec
+ENV CHECKSEC_REF="Partial RELRO,No Canary found,NX enabled,PIE enabled,No RPATH,No RUNPATH,No Symbols,No,0,3"
+RUN apt-get update -y && apt-get --no-install-recommends -y install file && \
+    wget -q https://raw.githubusercontent.com/slimm609/checksec/refs/heads/main/checksec.bash -O checksec && \
+    chmod +x checksec && \
+   ./checksec --file=/workspace/discover --output=csv | grep -q "$CHECKSEC_REF"
+
 RUN go get github.com/google/go-licenses && \
     go run github.com/google/go-licenses save ./... --save_path=licenses || \
     true
