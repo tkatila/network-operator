@@ -94,6 +94,14 @@ func TestWriteGaudiNet(t *testing.T) {
 		t.Errorf("cannot write to '%s': %v", file, err)
 	}
 
+	if stat, err := os.Stat(file); err == nil {
+		if stat.Mode() != 0644 {
+			t.Errorf("file mode is not 0644: %v", stat.Mode())
+		}
+	} else {
+		t.Errorf("could not stat the gaudinet file: %v", err)
+	}
+
 	json, err := os.ReadFile(file)
 	if err != nil {
 		t.Errorf("could not read tmp gaudinet file: %v", err)

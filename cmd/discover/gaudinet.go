@@ -85,5 +85,5 @@ func WriteGaudiNet(filename string, networkConfigs map[string]*networkConfigurat
 		return err
 	}
 
-	return os.WriteFile(filename, gaudinetContents, 0660)
+	return os.WriteFile(filename, gaudinetContents, 0644)
 }
