@@ -54,7 +54,7 @@ RUN sed -i 's/\(Types: deb\).*/\1 deb-src/' /etc/apt/sources.list.d/debian.sourc
     apt source libdbus-1-3 --download-only && \
     rm -rf /var/lib/apt/lists/*
 
-COPY --from=builder /workspace/discover .
+COPY --from=builder /workspace/discover /discover
 COPY --from=builder /workspace/licenses /licenses
 
 USER root
