@@ -8,6 +8,6 @@ spec:
     layer: L3
     image: intel/intel-network-linkdiscovery:latest
     pullPolicy: IfNotPresent
-    logLevel: 1
+  logLevel: 1
   nodeSelector:
     intel.feature.node.kubernetes.io/gaudi-ready: "true"
