@@ -179,24 +179,23 @@ func cmdRun(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	numConfigured := 0
-	numTotal := len(networkConfigs)
-
 	if config.mode == L3 {
 		detectLLDP(config, networkConfigs)
-
 		foundpeers := lldpResults(networkConfigs)
+
+		if config.configure && foundpeers {
+			numConfigured, numTotal := configureInterfaces(networkConfigs)
+			if numConfigured < numTotal {
+				return fmt.Errorf("Not all interfaces were configured (%d/%d).", numConfigured, numTotal)
+			}
+			klog.Infof("Configured %d of %d interfaces\n", numConfigured, numTotal)
+		}
 
 		if config.gaudinetfile != "" {
 			err := WriteGaudiNet(config.gaudinetfile, networkConfigs)
 			if err != nil {
 				klog.Errorf("Error: %v\n", err)
 			}
-		}
-
-		if config.configure && foundpeers {
-			numConfigured, numTotal = configureInterfaces(networkConfigs)
-			klog.Infof("Configured %d of %d interfaces\n", numConfigured, numTotal)
 		}
 	}
 
@@ -206,13 +205,7 @@ func cmdRun(cmd *cobra.Command, args []string) error {
 		if err := interfacesRestoreDown(networkConfigs); err != nil {
 			return err
 		}
-	} else if config.configure && config.mode == L3 {
-		if numConfigured < numTotal {
-			return fmt.Errorf("Not all interfaces were configured (%d/%d).", numConfigured, numTotal)
-		}
-	}
-
-	if config.configure && config.keepRunning {
+	} else if config.configure && config.keepRunning {
 		if s, err := os.Stat(nfdFeatureDir); err == nil && s.IsDir() {
 			content := nfdScaleOutReadyLabel + "\n"
 
