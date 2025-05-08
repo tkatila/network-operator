@@ -49,6 +49,33 @@ jobs:
       - run: make build
       - run: make operator-image
       - run: make discover-image
+      - name: Run Trivy for operator image
+        if: always()
+        uses: aquasecurity/trivy-action@6c175e9c4083a92bbca2f9724c8a5e33bc2d97a5 # 0.30.0
+        with:
+          scan-type: image
+          scan-ref: intel/intel-network-operator:latest
+          format: json
+          trivy-config: trivy.yaml
+          output: operator-image-vulnerabilities.json
+      - name: Run Trivy for discover image
+        if: always()
+        uses: aquasecurity/trivy-action@6c175e9c4083a92bbca2f9724c8a5e33bc2d97a5 # 0.30.0
+        with:
+          scan-type: image
+          scan-ref: intel/intel-network-linkdiscovery:latest
+          format: json
+          trivy-config: trivy.yaml
+          output: discover-image-vulnerabilities.json
+      - name: Store image reports as artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: trivy-image-vulnerabilities-json
+          path: |
+            discover-image-vulnerabilities.json
+            operator-image-vulnerabilities.json
+          retention-days: 14
   tests:
     name: Run tests
     runs-on: ${{ inputs.runner }}
