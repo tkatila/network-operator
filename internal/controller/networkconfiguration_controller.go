@@ -26,6 +26,7 @@ import (
 
 	apps "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
+	rbac "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -44,14 +45,17 @@ import (
 //+kubebuilder:rbac:groups=network.intel.com,resources=networkconfigurations/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=network.intel.com,resources=networkconfigurations/finalizers,verbs=update
 //+kubebuilder:rbac:groups=apps,resources=daemonsets,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=core,resources=serviceaccounts,verbs=get;list;create;delete
+//+kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=rolebindings,verbs=get;list;create;delete
 //+kubebuilder:rbac:groups="",resources=pods,verbs=get;list;watch
 //+kubebuilder:rbac:groups="",resources=events,verbs=get;list;watch
 
 // NetworkConfigurationReconciler reconciles a NetworkConfiguration object
 type NetworkConfigurationReconciler struct {
 	client.Client
-	Scheme    *runtime.Scheme
-	Namespace string
+	Scheme      *runtime.Scheme
+	Namespace   string
+	isOpenShift bool
 }
 
 const (
@@ -106,6 +110,61 @@ func addHostVolume(ds *apps.DaemonSet, volumeType v1.HostPathType, volumeName, h
 	}
 }
 
+func (r *NetworkConfigurationReconciler) createOpenShiftCollateral(ctx context.Context, log logr.Logger, parent metav1.Object, serviceAccountName string) {
+	if serviceAccountName == "" {
+		return
+	}
+
+	log.Info("Creating OpenShift collateral")
+
+	sa := daemonsets.GaudiLinkDiscoveryServiceAccount()
+	sa.Name = serviceAccountName
+	sa.ObjectMeta.Namespace = r.Namespace
+
+	if err := ctrl.SetControllerReference(parent, sa, r.Scheme); err != nil {
+		log.Error(err, "unable to set controller reference (service account)")
+
+		return
+	}
+
+	if err := r.Create(ctx, sa); err != nil {
+		if !apierrors.IsAlreadyExists(err) {
+			log.Error(err, "unable to create service account")
+
+			return
+		}
+	}
+
+	log.Info("Service account created", "name", sa.Name)
+
+	rb := daemonsets.OpenShiftRoleBinding()
+	rb.Name = serviceAccountName + "-rb"
+	rb.ObjectMeta.Namespace = r.Namespace
+	rb.Subjects = []rbac.Subject{
+		{
+			Kind:      "ServiceAccount",
+			Name:      serviceAccountName,
+			Namespace: r.Namespace,
+		},
+	}
+
+	if err := ctrl.SetControllerReference(parent, rb, r.Scheme); err != nil {
+		log.Error(err, "unable to set controller reference (rolebinding)")
+
+		return
+	}
+
+	if err := r.Create(ctx, rb); err != nil {
+		if !apierrors.IsAlreadyExists(err) {
+			log.Error(err, "unable to create role binding")
+
+			return
+		}
+	}
+
+	log.Info("Role binding created", "name", rb.Name)
+}
+
 func updateGaudiScaleOutDaemonSet(ds *apps.DaemonSet, netconf *networkv1alpha1.NetworkConfiguration, namespace string) {
 	ds.Name = netconf.Name
 	ds.ObjectMeta.Namespace = namespace
@@ -125,6 +184,12 @@ func updateGaudiScaleOutDaemonSet(ds *apps.DaemonSet, netconf *networkv1alpha1.N
 		args = append(args, fmt.Sprintf("--v=%d", netconf.Spec.LogLevel))
 	}
 
+	if netconf.Spec.GaudiScaleOut.DisableNetworkManager {
+		args = append(args, "--disable-networkmanager")
+		addHostVolume(ds, v1.HostPathDirectoryOrCreate, "var-run-dbus", "/var/run/dbus", "/var/run/dbus")
+		addHostVolume(ds, v1.HostPathDirectoryOrCreate, "networkmanager", "/etc/NetworkManager", "/etc/NetworkManager")
+	}
+
 	switch netconf.Spec.GaudiScaleOut.Layer {
 	case layerSelectionL3:
 		args = append(args, "--wait=90", fmt.Sprintf("--gaudinet=%s", gaudinetPathContainer))
@@ -142,6 +207,13 @@ func (r *NetworkConfigurationReconciler) createGaudiScaleOutDaemonset(netconf cl
 
 	log.Info("Creating Gaudi Scale-Out DaemonSet", "name", cr.Name)
 
+	saName := ""
+	if r.isOpenShift {
+		saName = cr.Name + "-sa"
+	}
+
+	ds.Spec.Template.Spec.ServiceAccountName = saName
+
 	updateGaudiScaleOutDaemonSet(ds, cr, r.Namespace)
 
 	if err := ctrl.SetControllerReference(netconf.(metav1.Object), ds, r.Scheme); err != nil {
@@ -157,6 +229,10 @@ func (r *NetworkConfigurationReconciler) createGaudiScaleOutDaemonset(netconf cl
 	}
 
 	log.Info("Gaudi scale-out daemonset created")
+
+	if saName != "" {
+		r.createOpenShiftCollateral(ctx, log, netconf.(metav1.Object), saName)
+	}
 
 	return ctrl.Result{}, nil
 }
@@ -325,8 +401,9 @@ func indexPods(ctx context.Context, mgr ctrl.Manager) error {
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *NetworkConfigurationReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *NetworkConfigurationReconciler) SetupWithManager(mgr ctrl.Manager, isOpenShift bool) error {
 	r.Scheme = mgr.GetScheme()
+	r.isOpenShift = isOpenShift
 
 	ctx := context.Background()
 	apiGVString := networkv1alpha1.GroupVersion.String()

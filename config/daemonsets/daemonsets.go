@@ -18,19 +18,59 @@ import (
 	_ "embed"
 
 	apps "k8s.io/api/apps/v1"
+	core "k8s.io/api/core/v1"
+	rbac "k8s.io/api/rbac/v1"
 	"sigs.k8s.io/yaml"
 )
 
 //go:embed gaudi/internal/linkdiscovery.yaml
 var contentGaudiL3BGPConf []byte
 
+//go:embed generic/linkdiscovery-serviceaccount.yaml
+var contentLinkDiscoveryServiceAccount []byte
+
+//go:embed openshift/rolebinding.yaml
+var contentOpenshiftRoleBinding []byte
+
 func GaudiL3BGPDaemonSet() *apps.DaemonSet {
 	return getDaemonset(contentGaudiL3BGPConf).DeepCopy()
+}
+
+func GaudiLinkDiscoveryServiceAccount() *core.ServiceAccount {
+	return getServiceAccount(contentLinkDiscoveryServiceAccount).DeepCopy()
+}
+
+func OpenShiftRoleBinding() *rbac.RoleBinding {
+	return getRoleBinding(contentOpenshiftRoleBinding).DeepCopy()
 }
 
 // getDaemonset unmarshalls yaml content into a DaemonSet object.
 func getDaemonset(content []byte) *apps.DaemonSet {
 	var result apps.DaemonSet
+
+	err := yaml.Unmarshal(content, &result)
+	if err != nil {
+		panic(err)
+	}
+
+	return &result
+}
+
+// getServiceAccount unmarshalls yaml content into a ServiceAccount object.
+func getServiceAccount(content []byte) *core.ServiceAccount {
+	var result core.ServiceAccount
+
+	err := yaml.Unmarshal(content, &result)
+	if err != nil {
+		panic(err)
+	}
+
+	return &result
+}
+
+// getRoleBinding unmarshalls yaml content into a RoleBinding object.
+func getRoleBinding(content []byte) *rbac.RoleBinding {
+	var result rbac.RoleBinding
 
 	err := yaml.Unmarshal(content, &result)
 	if err != nil {

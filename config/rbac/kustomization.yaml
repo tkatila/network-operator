@@ -24,3 +24,4 @@ resources:
 # if you do not want those helpers be installed with your Project.
 - networkconfiguration_editor_role.yaml
 - networkconfiguration_viewer_role.yaml
+- scc_rolebinding.yaml

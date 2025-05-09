@@ -51,6 +51,11 @@ spec:
                 description: Gaudi Scale-Out specific settings. Only valid when configuration
                   type is 'gaudi-so'
                 properties:
+                  disableNetworkManager:
+                    description: |-
+                      Disable Gaudi scale-out interfaces in NetworkManager. For nodes where NetworkManager tries
+                      to configure the Gaudi interfaces, prevent it from doing so.
+                    type: boolean
                   image:
                     description: Container image to handle interface configurations
                       on the worker nodes.

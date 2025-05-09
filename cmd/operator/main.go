@@ -18,6 +18,7 @@ import (
 	"crypto/tls"
 	"flag"
 	"os"
+	"slices"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
@@ -36,12 +37,17 @@ import (
 
 	networkv1alpha1 "github.com/intel/network-operator/api/v1alpha1"
 	"github.com/intel/network-operator/internal/controller"
+
 	//+kubebuilder:scaffold:imports
+
+	"k8s.io/client-go/discovery"
+	"k8s.io/client-go/rest"
 )
 
 var (
-	scheme   = runtime.NewScheme()
-	setupLog = ctrl.Log.WithName("setup")
+	scheme          = runtime.NewScheme()
+	setupLog        = ctrl.Log.WithName("setup")
+	openShiftGroups = []string{"route.openshift.io", "security.openshift.io"}
 )
 
 const (
@@ -53,6 +59,31 @@ func init() {
 
 	utilruntime.Must(networkv1alpha1.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
+}
+
+func isOpenShift() (bool, error) {
+	config, err := rest.InClusterConfig()
+	if err != nil {
+		return false, err
+	}
+
+	discoveryClient, err := discovery.NewDiscoveryClientForConfig(config)
+	if err != nil {
+		return false, err
+	}
+
+	apiGroups, err := discoveryClient.ServerGroups()
+	if err != nil {
+		return false, err
+	}
+
+	for _, group := range apiGroups.Groups {
+		if slices.Contains(openShiftGroups, group.Name) {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
 
 func main() {
@@ -159,11 +190,21 @@ func main() {
 		os.Exit(1)
 	}
 
+	isInOpenShift, err := isOpenShift()
+	if err != nil {
+		setupLog.Error(err, "unable to check if running in OpenShift")
+		os.Exit(1)
+	}
+
+	if isInOpenShift {
+		setupLog.Info("Detected OpenShift environment")
+	}
+
 	if err = (&controller.NetworkConfigurationReconciler{
 		Client:    mgr.GetClient(),
 		Scheme:    mgr.GetScheme(),
 		Namespace: ns,
-	}).SetupWithManager(mgr); err != nil {
+	}).SetupWithManager(mgr, isInOpenShift); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "NetworkConfiguration")
 		os.Exit(1)
 	}

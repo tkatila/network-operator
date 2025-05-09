@@ -46,7 +46,12 @@ type NetworkConfigurationSpec struct {
 
 // NetworkConfigurationSpec defines the desired state of NetworkConfiguration
 type GaudiScaleOutSpec struct {
+	// Disable Gaudi scale-out interfaces in NetworkManager. For nodes where NetworkManager tries
+	// to configure the Gaudi interfaces, prevent it from doing so.
+	DisableNetworkManager bool `json:"disableNetworkManager,omitempty"`
+
 	// Layer where the configuration should occur. Possible options: L2 and L3.
+	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:Enum=L2;L3
 	Layer string `json:"layer,omitempty"`
 

@@ -24,3 +24,17 @@ func TestGetDaemonset(t *testing.T) {
 		t.Error("expected to receive a valid daemonset")
 	}
 }
+
+func TestGaudiServiceAccount(t *testing.T) {
+	sa := GaudiLinkDiscoveryServiceAccount()
+	if sa == nil {
+		t.Error("expected to receive a valid service account")
+	}
+}
+
+func TestOpenShiftRoleBinding(t *testing.T) {
+	rb := OpenShiftRoleBinding()
+	if rb == nil {
+		t.Error("expected to receive a valid role binding")
+	}
+}

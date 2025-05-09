@@ -33,6 +33,15 @@ rules:
   - update
   - watch
 - apiGroups:
+  - ""
+  resources:
+  - serviceaccounts
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+- apiGroups:
   - network.intel.com
   resources:
   - networkconfigurations
@@ -58,3 +67,12 @@ rules:
   - get
   - patch
   - update
+- apiGroups:
+  - rbac.authorization.k8s.io
+  resources:
+  - rolebindings
+  verbs:
+  - create
+  - delete
+  - get
+  - list

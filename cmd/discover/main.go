@@ -32,6 +32,8 @@ import (
 	"k8s.io/klog/v2"
 
 	"github.com/intel/network-operator/pkg/lldp"
+
+	nm "github.com/intel/network-operator/internal/nm"
 )
 
 type layerMode int
@@ -49,6 +51,7 @@ type cmdConfig struct {
 	ctx          context.Context
 	timeout      time.Duration
 	configure    bool
+	disableNM    bool
 	gaudinetfile string
 	ifaces       []string
 	mode         layerMode
@@ -76,6 +79,8 @@ func getConfig(cmd *cobra.Command) (*cmdConfig, error) {
 	}
 
 	config.configure, _ = cmd.Flags().GetBool("configure")
+
+	config.disableNM, _ = cmd.Flags().GetBool("disable-networkmanager")
 
 	config.gaudinetfile, err = cmd.Flags().GetString("gaudinet")
 	if err != nil {
@@ -187,6 +192,13 @@ func cmdRun(cmd *cobra.Command, args []string) error {
 
 	networkConfigs := getNetworkConfigs(config.ifaces)
 
+	if config.disableNM {
+		err := nm.DisableNetworkManagerForInterfaces(config.ifaces)
+		if err != nil {
+			return fmt.Errorf("Failed to disable interfaces in NetworkManager: %v", err)
+		}
+	}
+
 	if err := interfacesUp(networkConfigs); err != nil {
 		return err
 	}
@@ -269,6 +281,7 @@ func setupCmd() (*cobra.Command, error) {
 
 	cmd.Flags().StringP("mode", "", "L3", "'L2' for network layer 2 or 'L3' for network layer 3 (L3) using LLDP")
 	cmd.Flags().BoolP("configure", "", false, "Configure L3 network with LLDP or set interfaces up with L2 networks")
+	cmd.Flags().BoolP("disable-networkmanager", "", false, "Disable Host's NetworkManager for interfaces")
 	cmd.Flags().StringP("interfaces", "", "", "Comma separated list of additional network interfaces")
 	cmd.Flags().StringP("wait", "", "30s", "Time to wait for LLDP packets")
 	cmd.Flags().StringP("gaudinet", "", "", "gaudinet file path")

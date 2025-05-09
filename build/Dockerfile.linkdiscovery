@@ -26,6 +26,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends libpcap0.8-dev
 # Copy the go source
 COPY cmd/discover/*.go cmd/discover/
 COPY pkg/ pkg/
+COPY internal/ internal/
 
 # Build
 RUN CGO_ENABLED=1 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} GO111MODULE=${GO111MODULE} \
