@@ -30,7 +30,8 @@ COPY pkg/ pkg/
 # Build
 RUN CGO_ENABLED=1 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} GO111MODULE=${GO111MODULE} \
     go build $CGOFLAGS --gcflags="$GCFLAGS" --asmflags="$ASMFLAGS" --ldflags="$LDFLAGS"  -a -o discover \
-    cmd/discover/main.go cmd/discover/gaudinet.go cmd/discover/network.go
+    cmd/discover/main.go cmd/discover/gaudinet.go cmd/discover/network.go \
+    cmd/discover/systemd-networkd.go
 
 # Verify binary build specs with checksec
 ENV CHECKSEC_REF="Partial RELRO,No Canary found,NX enabled,PIE enabled,No RPATH,No RUNPATH,No Symbols,No,0,3"

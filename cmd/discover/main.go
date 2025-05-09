@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 Intel Corporation
+ * Copyright (C) 2024-2025 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -53,6 +53,7 @@ type cmdConfig struct {
 	ifaces       []string
 	mode         layerMode
 	keepRunning  bool
+	networkd     string
 }
 
 func getConfig(cmd *cobra.Command) (*cmdConfig, error) {
@@ -113,6 +114,17 @@ func getConfig(cmd *cobra.Command) (*cmdConfig, error) {
 		return nil, fmt.Errorf("Cannot parse keep-running expression: %v", err)
 	}
 	config.keepRunning = keepRunning
+
+	config.networkd, err = cmd.Flags().GetString("systemd-networkd")
+	if err != nil {
+		return nil, fmt.Errorf("Cannot parse systemd-networkd expression: %v", err)
+	}
+	if config.networkd != "" {
+		if err := os.MkdirAll(config.networkd, 0755); err != nil {
+			return nil, fmt.Errorf("Cannot create systemd-networkd directory: %v", err)
+		}
+		klog.Infof("Created systemd-networkd directory %s", config.networkd)
+	}
 
 	return config, nil
 }
@@ -197,6 +209,13 @@ func cmdRun(cmd *cobra.Command, args []string) error {
 				klog.Errorf("Error: %v\n", err)
 			}
 		}
+
+		if config.networkd != "" {
+			_, err = WriteSystemdNetworkd(config.networkd, networkConfigs)
+			if err != nil {
+				return fmt.Errorf("Could not create systemd-networkd configuration files: %v\n", err)
+			}
+		}
 	}
 
 	logResults(config, networkConfigs)
@@ -254,6 +273,7 @@ func setupCmd() (*cobra.Command, error) {
 	cmd.Flags().StringP("wait", "", "30s", "Time to wait for LLDP packets")
 	cmd.Flags().StringP("gaudinet", "", "", "gaudinet file path")
 	cmd.Flags().BoolP("keep-running", "", false, "Keep running after any configurations are done")
+	cmd.Flags().StringP("systemd-networkd", "", "", "Write systemd networkd configuration files to given directory")
 
 	return cmd, nil
 }

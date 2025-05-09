@@ -149,7 +149,8 @@ func getFakeNetworkData() map[string]fakeNetworkTestData {
 			nwconfig: networkConfiguration{
 				link: &fakeLink{
 					fakeAttrs: netlink.LinkAttrs{
-						Name: "eth_a",
+						Name:         "eth_a",
+						HardwareAddr: net.HardwareAddr{0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f},
 					},
 				},
 				portDescription: "no-alert 10.210.8.122/30",
@@ -165,7 +166,8 @@ func getFakeNetworkData() map[string]fakeNetworkTestData {
 			nwconfig: networkConfiguration{
 				link: &fakeLink{
 					fakeAttrs: netlink.LinkAttrs{
-						Name: "eth_b",
+						Name:         "eth_b",
+						HardwareAddr: net.HardwareAddr{0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x0a},
 					},
 				},
 				portDescription: "unexpected port description",
@@ -186,7 +188,8 @@ func getFakeNetworkData() map[string]fakeNetworkTestData {
 			nwconfig: networkConfiguration{
 				link: &fakeLink{
 					fakeAttrs: netlink.LinkAttrs{
-						Name: "eth_c",
+						Name:         "eth_c",
+						HardwareAddr: net.HardwareAddr{0x0c, 0x0d, 0x0e, 0x0f, 0x0a, 0x0b},
 					},
 				},
 				portDescription: "no-alert 10.210.8.126/30",
