@@ -148,9 +148,8 @@ deployments: kustomize
 
 .PHONY: build
 build: manifests generate fmt vet ## Build manager binary.
-	go build -o bin/manager cmd/operator/main.go
-	go build -o bin/discover cmd/discover/main.go cmd/discover/gaudinet.go \
-		cmd/discover/network.go cmd/discover/systemd-networkd.go
+	go build -o bin/manager ./cmd/operator/
+	go build -o bin/discover ./cmd/discover/
 
 .PHONY: run
 run: manifests generate fmt vet ## Run a controller from your host.
