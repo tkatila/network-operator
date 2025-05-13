@@ -192,7 +192,7 @@ func updateGaudiScaleOutDaemonSet(ds *apps.DaemonSet, netconf *networkv1alpha1.N
 
 	switch netconf.Spec.GaudiScaleOut.Layer {
 	case layerSelectionL3:
-		args = append(args, "--wait=90", fmt.Sprintf("--gaudinet=%s", gaudinetPathContainer))
+		args = append(args, "--wait=90s", fmt.Sprintf("--gaudinet=%s", gaudinetPathContainer))
 
 		addHostVolume(ds, v1.HostPathDirectoryOrCreate, "gaudinetpath", filepath.Dir(gaudinetPathHost), filepath.Dir(gaudinetPathContainer))
 	}

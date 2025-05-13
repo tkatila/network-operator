@@ -36,11 +36,9 @@ import (
 	nm "github.com/intel/network-operator/internal/nm"
 )
 
-type layerMode int
-
 const (
-	L2 layerMode = iota
-	L3
+	L2 = "L2"
+	L3 = "L3"
 
 	nfdFeatureDir         = "/etc/kubernetes/node-feature-discovery/features.d/"
 	nfdLabelFile          = nfdFeatureDir + "scale-out-readiness.txt"
@@ -53,85 +51,23 @@ type cmdConfig struct {
 	configure    bool
 	disableNM    bool
 	gaudinetfile string
-	ifaces       []string
-	mode         layerMode
+	ifaces       string
+	mode         string
 	keepRunning  bool
 	networkd     string
 }
 
-func getConfig(cmd *cobra.Command) (*cmdConfig, error) {
-	config := &cmdConfig{ctx: context.Background()}
-
-	wait, err := cmd.Flags().GetString("wait")
-	if err != nil {
-		return nil, fmt.Errorf("Cannot parse time expression: %v", err)
-	}
-	config.timeout, err = time.ParseDuration(wait)
-	if err != nil {
-		var secs_err error
-
-		// Let's give it a shot with seconds added, if not return
-		// previous duration parsing error
-		config.timeout, secs_err = time.ParseDuration(wait + "s")
-		if secs_err != nil {
-			return nil, fmt.Errorf("Cannot parse duration: %v", err)
-		}
-	}
-
-	config.configure, _ = cmd.Flags().GetBool("configure")
-
-	config.disableNM, _ = cmd.Flags().GetBool("disable-networkmanager")
-
-	config.gaudinetfile, err = cmd.Flags().GetString("gaudinet")
-	if err != nil {
-		return nil, fmt.Errorf("Cannot parse gaudinet argument")
-	}
-
-	config.ifaces = getNetworks()
-	extrainterfaces, err := cmd.Flags().GetString("interfaces")
-	if err == nil && len(extrainterfaces) > 0 {
-		config.ifaces = append(config.ifaces, strings.Split(extrainterfaces, ",")...)
-	}
-
-	if len(config.ifaces) == 0 {
-		return nil, fmt.Errorf("No devices found")
-	}
-
-	mode, err := cmd.Flags().GetString("mode")
-	if err != nil {
-		return nil, fmt.Errorf("Cannot parse mode expression: %v", err)
-	}
-	switch strings.ToLower(mode) {
-	case "l3":
-		fallthrough
-	case "l3switch":
+func sanitizeInput(config *cmdConfig) error {
+	switch strings.ToUpper(config.mode) {
+	case L3:
 		config.mode = L3
-
-	case "l2":
+	case L2:
 		config.mode = L2
-
 	default:
-		return nil, fmt.Errorf("Cannot parse mode '%s'", mode)
+		return fmt.Errorf("Invalid mode '%s'", config.mode)
 	}
 
-	keepRunning, err := cmd.Flags().GetBool("keep-running")
-	if err != nil {
-		return nil, fmt.Errorf("Cannot parse keep-running expression: %v", err)
-	}
-	config.keepRunning = keepRunning
-
-	config.networkd, err = cmd.Flags().GetString("systemd-networkd")
-	if err != nil {
-		return nil, fmt.Errorf("Cannot parse systemd-networkd expression: %v", err)
-	}
-	if config.networkd != "" {
-		if err := os.MkdirAll(config.networkd, 0755); err != nil {
-			return nil, fmt.Errorf("Cannot create systemd-networkd directory: %v", err)
-		}
-		klog.Infof("Created systemd-networkd directory %s", config.networkd)
-	}
-
-	return config, nil
+	return nil
 }
 
 func detectLLDP(config *cmdConfig, networkConfigs map[string]*networkConfiguration) {
@@ -174,13 +110,11 @@ func detectLLDP(config *cmdConfig, networkConfigs map[string]*networkConfigurati
 	}
 }
 
-func cmdRun(cmd *cobra.Command, args []string) error {
-	config, err := getConfig(cmd)
+func cmdRun(config *cmdConfig) error {
+	err := sanitizeInput(config)
 	if err != nil {
 		return err
 	}
-
-	cmd.SilenceUsage = true
 
 	if _, err = os.Stat(nfdLabelFile); err == nil {
 		klog.Infof("NFD label file already exists, removing it...\n")
@@ -190,10 +124,30 @@ func cmdRun(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	networkConfigs := getNetworkConfigs(config.ifaces)
+	if config.networkd != "" {
+		if err := os.MkdirAll(config.networkd, 0755); err != nil {
+			return fmt.Errorf("Cannot create systemd-networkd directory: %v", err)
+		}
+		klog.Infof("Created systemd-networkd directory %s", config.networkd)
+	}
+
+	allInterfaces := getNetworks()
+
+	if len(config.ifaces) > 0 {
+		allInterfaces = append(allInterfaces, strings.Split(config.ifaces, ",")...)
+	}
+
+	if len(allInterfaces) == 0 {
+		return fmt.Errorf("No interfaces found")
+	}
+
+	networkConfigs := getNetworkConfigs(allInterfaces)
+	if len(networkConfigs) < len(allInterfaces) {
+		return fmt.Errorf("Not all interfaces were found in the system")
+	}
 
 	if config.disableNM {
-		err := nm.DisableNetworkManagerForInterfaces(config.ifaces)
+		err := nm.DisableNetworkManagerForInterfaces(allInterfaces)
 		if err != nil {
 			return fmt.Errorf("Failed to disable interfaces in NetworkManager: %v", err)
 		}
@@ -216,15 +170,13 @@ func cmdRun(cmd *cobra.Command, args []string) error {
 		}
 
 		if config.gaudinetfile != "" {
-			err := WriteGaudiNet(config.gaudinetfile, networkConfigs)
-			if err != nil {
+			if err := WriteGaudiNet(config.gaudinetfile, networkConfigs); err != nil {
 				klog.Errorf("Error: %v\n", err)
 			}
 		}
 
 		if config.networkd != "" {
-			_, err = WriteSystemdNetworkd(config.networkd, networkConfigs)
-			if err != nil {
+			if _, err = WriteSystemdNetworkd(config.networkd, networkConfigs); err != nil {
 				return fmt.Errorf("Could not create systemd-networkd configuration files: %v\n", err)
 			}
 		}
@@ -268,10 +220,16 @@ func cmdRun(cmd *cobra.Command, args []string) error {
 // error is always nil, but keep the logic incase we want to return it later on.
 // nolint: unparam
 func setupCmd() (*cobra.Command, error) {
+	config := &cmdConfig{ctx: context.Background()}
+
 	cmd := &cobra.Command{
 		Use:   "discover",
 		Short: "Discover and optionally configure network devices",
-		RunE:  cmdRun,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cmd.SilenceUsage = true
+
+			return cmdRun(config)
+		},
 	}
 	fs := goflag.FlagSet{}
 	klog.InitFlags(&fs)
@@ -279,14 +237,22 @@ func setupCmd() (*cobra.Command, error) {
 	cmd.Flags().AddGoFlagSet(&fs)
 	cmd.Flags().SortFlags = false
 
-	cmd.Flags().StringP("mode", "", "L3", "'L2' for network layer 2 or 'L3' for network layer 3 (L3) using LLDP")
-	cmd.Flags().BoolP("configure", "", false, "Configure L3 network with LLDP or set interfaces up with L2 networks")
-	cmd.Flags().BoolP("disable-networkmanager", "", false, "Disable Host's NetworkManager for interfaces")
-	cmd.Flags().StringP("interfaces", "", "", "Comma separated list of additional network interfaces")
-	cmd.Flags().StringP("wait", "", "30s", "Time to wait for LLDP packets")
-	cmd.Flags().StringP("gaudinet", "", "", "gaudinet file path")
-	cmd.Flags().BoolP("keep-running", "", false, "Keep running after any configurations are done")
-	cmd.Flags().StringP("systemd-networkd", "", "", "Write systemd networkd configuration files to given directory")
+	cmd.Flags().StringVarP(&config.mode, "mode", "", L3,
+		"'L2' for network layer 2 or 'L3' for network layer 3 (L3) using LLDP")
+	cmd.Flags().BoolVarP(&config.configure, "configure", "", false,
+		"Configure L3 network with LLDP or set interfaces up with L2 networks")
+	cmd.Flags().BoolVarP(&config.disableNM, "disable-networkmanager", "", false,
+		"Disable Host's NetworkManager for interfaces")
+	cmd.Flags().StringVarP(&config.ifaces, "interfaces", "", "",
+		"Comma separated list of additional network interfaces")
+	cmd.Flags().DurationVarP(&config.timeout, "wait", "", time.Second*30,
+		"Time to wait for LLDP packets")
+	cmd.Flags().StringVarP(&config.gaudinetfile, "gaudinet", "", "",
+		"gaudinet file path")
+	cmd.Flags().BoolVarP(&config.keepRunning, "keep-running", "", false,
+		"Keep running after any configurations are done")
+	cmd.Flags().StringVarP(&config.networkd, "systemd-networkd", "", "",
+		"Write systemd networkd configuration files to given directory")
 
 	return cmd, nil
 }

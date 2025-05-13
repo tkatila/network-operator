@@ -112,7 +112,7 @@ var _ = Describe("NetworkConfiguration Controller", func() {
 				g.Expect(ds.Spec.Template.Spec.Containers[0].Args[0]).To(BeEquivalentTo("--configure=true"))
 				g.Expect(ds.Spec.Template.Spec.Containers[0].Args[1]).To(BeEquivalentTo("--keep-running"))
 				g.Expect(ds.Spec.Template.Spec.Containers[0].Args[2]).To(BeEquivalentTo("--mode=L3"))
-				g.Expect(ds.Spec.Template.Spec.Containers[0].Args[3]).To(BeEquivalentTo("--wait=90"))
+				g.Expect(ds.Spec.Template.Spec.Containers[0].Args[3]).To(BeEquivalentTo("--wait=90s"))
 				g.Expect(ds.Spec.Template.Spec.Containers[0].Args[4]).To(BeEquivalentTo("--gaudinet=/host/etc/habanalabs/gaudinet.json"))
 
 				g.Expect(ds.Spec.Template.Spec.Volumes).To(HaveLen(2))

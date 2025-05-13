@@ -474,7 +474,7 @@ func TestLogResults(t *testing.T) {
 	cmd := &cmdConfig{
 		ctx:          context.Background(),
 		gaudinetfile: "gaudinet.json",
-		ifaces:       []string{"eth_a", "eth_b", "eth_c"},
+		ifaces:       "eth_a,eth_b,eth_c",
 		mode:         L2,
 	}
 
