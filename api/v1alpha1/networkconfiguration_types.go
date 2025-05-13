@@ -62,6 +62,11 @@ type GaudiScaleOutSpec struct {
 	// +kubebuilder:validation:Enum=Never;Always;IfNotPresent
 	PullPolicy string `json:"pullPolicy,omitempty"`
 
+	// MTU for the scale-out interfaces.
+	// +kubebuilder:validation:Minimum=1500
+	// +kubebuilder:validation:Maximum=9000
+	MTU int `json:"mtu,omitempty"`
+
 	// IP range to be distributed for the scale-out interfaces over all nodes. Used with L3 layer selection.
 	// Should be an IPv4 subnet string. e.g. 192.168.100.0/24
 	// TODO: move to an external CRD and refer here?

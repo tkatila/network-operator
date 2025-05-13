@@ -46,6 +46,7 @@ type networkLinkFn struct {
 	RouteAppend   func(route *netlink.Route) error
 	LinkSetUp     func(link netlink.Link) error
 	LinkSetDown   func(link netlink.Link) error
+	LinkSetMTU    func(link netlink.Link, mtu int) error
 }
 
 var networkLink = networkLinkFn{
@@ -56,6 +57,7 @@ var networkLink = networkLinkFn{
 	RouteAppend:   netlink.RouteAppend,
 	LinkSetUp:     netlink.LinkSetUp,
 	LinkSetDown:   netlink.LinkSetDown,
+	LinkSetMTU:    netlink.LinkSetMTU,
 }
 
 type networkConfiguration struct {
@@ -372,6 +374,15 @@ func addRoute(nwconfig *networkConfiguration, mask RouteMask) error {
 	}
 
 	return err
+}
+
+func interfacesSetMTU(networkConfigurations map[string]*networkConfiguration, mtu int) {
+	for _, nwconfig := range networkConfigurations {
+		if err := networkLink.LinkSetMTU(nwconfig.link, mtu); err != nil {
+			klog.Warningf("Could not set MTU %d for interface '%s': %v",
+				mtu, nwconfig.link.Attrs().Name, err)
+		}
+	}
 }
 
 func configureInterfaces(networkConfigs map[string]*networkConfiguration) (int, int) {

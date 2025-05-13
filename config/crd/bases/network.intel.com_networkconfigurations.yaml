@@ -73,6 +73,11 @@ spec:
                     - L2
                     - L3
                     type: string
+                  mtu:
+                    description: MTU for the scale-out interfaces.
+                    maximum: 9000
+                    minimum: 1500
+                    type: integer
                   pullPolicy:
                     description: Normal image pull policy used in the resulting daemonset.
                     enum:

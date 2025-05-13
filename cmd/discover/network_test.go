@@ -588,3 +588,13 @@ func TestInterfaceDownErrors(t *testing.T) {
 		t.Error("interfacesRestoreDown should have failed")
 	}
 }
+
+func TestSetLinkMTUWarning(_ *testing.T) {
+	netConfs := getFakeNetworkDataConfigs()
+
+	networkLink.LinkSetMTU = func(link netlink.Link, mtu int) error {
+		return fmt.Errorf("cant set mtu")
+	}
+
+	interfacesSetMTU(netConfs, 8080)
+}

@@ -55,9 +55,20 @@ type cmdConfig struct {
 	mode         string
 	keepRunning  bool
 	networkd     string
+	mtu          int
 }
 
 func sanitizeInput(config *cmdConfig) error {
+	if config.mtu < 1500 {
+		klog.Infof("Forcing MTU value 1500 (old %d)", config.mtu)
+
+		config.mtu = 1500
+	} else if config.mtu > 9000 {
+		klog.Infof("Limiting MTU value 9000 (old %d)", config.mtu)
+
+		config.mtu = 9000
+	}
+
 	switch strings.ToUpper(config.mode) {
 	case L3:
 		config.mode = L3
@@ -157,6 +168,8 @@ func cmdRun(config *cmdConfig) error {
 		return err
 	}
 
+	interfacesSetMTU(networkConfigs, config.mtu)
+
 	if config.mode == L3 {
 		detectLLDP(config, networkConfigs)
 		foundpeers := lldpResults(networkConfigs)
@@ -253,6 +266,8 @@ func setupCmd() (*cobra.Command, error) {
 		"Keep running after any configurations are done")
 	cmd.Flags().StringVarP(&config.networkd, "systemd-networkd", "", "",
 		"Write systemd networkd configuration files to given directory")
+	cmd.Flags().IntVarP(&config.mtu, "mtu", "", 1500,
+		"MTU value to set for interfaces")
 
 	return cmd, nil
 }

@@ -75,6 +75,7 @@ var _ = Describe("NetworkConfiguration Controller", func() {
 					GaudiScaleOut: networkv1alpha1.GaudiScaleOutSpec{
 						Layer: "L3",
 						Image: "intel/my-linkdiscovery:latest",
+						MTU:   8000,
 					},
 					NodeSelector: map[string]string{
 						"foo": "bar",
@@ -108,12 +109,13 @@ var _ = Describe("NetworkConfiguration Controller", func() {
 				g.Expect(ds.Spec.Template.Spec.ServiceAccountName).To(BeEquivalentTo(resourceName + "-sa"))
 				g.Expect(ds.Spec.Template.Spec.Containers).To(HaveLen(1))
 				g.Expect(ds.Spec.Template.Spec.Containers[0].Image).To(BeEquivalentTo("intel/my-linkdiscovery:latest"))
-				g.Expect(ds.Spec.Template.Spec.Containers[0].Args).To(HaveLen(5))
+				g.Expect(ds.Spec.Template.Spec.Containers[0].Args).To(HaveLen(6))
 				g.Expect(ds.Spec.Template.Spec.Containers[0].Args[0]).To(BeEquivalentTo("--configure=true"))
 				g.Expect(ds.Spec.Template.Spec.Containers[0].Args[1]).To(BeEquivalentTo("--keep-running"))
 				g.Expect(ds.Spec.Template.Spec.Containers[0].Args[2]).To(BeEquivalentTo("--mode=L3"))
-				g.Expect(ds.Spec.Template.Spec.Containers[0].Args[3]).To(BeEquivalentTo("--wait=90s"))
-				g.Expect(ds.Spec.Template.Spec.Containers[0].Args[4]).To(BeEquivalentTo("--gaudinet=/host/etc/habanalabs/gaudinet.json"))
+				g.Expect(ds.Spec.Template.Spec.Containers[0].Args[3]).To(BeEquivalentTo("--mtu=8000"))
+				g.Expect(ds.Spec.Template.Spec.Containers[0].Args[4]).To(BeEquivalentTo("--wait=90s"))
+				g.Expect(ds.Spec.Template.Spec.Containers[0].Args[5]).To(BeEquivalentTo("--gaudinet=/host/etc/habanalabs/gaudinet.json"))
 
 				g.Expect(ds.Spec.Template.Spec.Volumes).To(HaveLen(2))
 				g.Expect(ds.Spec.Template.Spec.Volumes[0].Name).To(BeEquivalentTo("nfd-features"))
@@ -141,15 +143,17 @@ var _ = Describe("NetworkConfiguration Controller", func() {
 				g.Expect(k8sClient.Get(ctx, typeNamespacedName, &ds)).To(Succeed())
 				g.Expect(ds.ObjectMeta.Name).To(BeEquivalentTo(typeNamespacedName.Name))
 				g.Expect(ds.Spec.Template.Spec.Containers).To(HaveLen(1))
-				g.Expect(ds.Spec.Template.Spec.Containers[0].Args).To(HaveLen(3))
+				g.Expect(ds.Spec.Template.Spec.Containers[0].Args).To(HaveLen(4))
 				g.Expect(ds.Spec.Template.Spec.Containers[0].Args[0]).To(BeEquivalentTo("--configure=true"))
 				g.Expect(ds.Spec.Template.Spec.Containers[0].Args[1]).To(BeEquivalentTo("--keep-running"))
 				g.Expect(ds.Spec.Template.Spec.Containers[0].Args[2]).To(BeEquivalentTo("--mode=L2"))
+				g.Expect(ds.Spec.Template.Spec.Containers[0].Args[3]).To(BeEquivalentTo("--mtu=8000"))
 			}, timeout, interval).Should(Succeed())
 
 			// Test NetworkManager disabling
 			resource.Spec.GaudiScaleOut.Layer = "L3"
 			resource.Spec.GaudiScaleOut.DisableNetworkManager = true
+			resource.Spec.GaudiScaleOut.MTU = 0
 
 			Expect(k8sClient.Update(ctx, resource)).To(Succeed())
 
