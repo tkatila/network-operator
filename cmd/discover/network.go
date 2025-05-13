@@ -42,6 +42,7 @@ type networkLinkFn struct {
 	LinkByName    func(name string) (netlink.Link, error)
 	AddrList      func(link netlink.Link, family int) ([]netlink.Addr, error)
 	AddrAdd       func(link netlink.Link, addr *netlink.Addr) error
+	AddrDel       func(link netlink.Link, addr *netlink.Addr) error
 	LinkSubscribe func(ch chan<- netlink.LinkUpdate, done <-chan struct{}) error
 	RouteAppend   func(route *netlink.Route) error
 	LinkSetUp     func(link netlink.Link) error
@@ -53,6 +54,7 @@ var networkLink = networkLinkFn{
 	LinkByName:    netlink.LinkByName,
 	AddrList:      netlink.AddrList,
 	AddrAdd:       netlink.AddrAdd,
+	AddrDel:       netlink.AddrDel,
 	LinkSubscribe: netlink.LinkSubscribe,
 	RouteAppend:   netlink.RouteAppend,
 	LinkSetUp:     netlink.LinkSetUp,
@@ -383,6 +385,23 @@ func interfacesSetMTU(networkConfigurations map[string]*networkConfiguration, mt
 				mtu, nwconfig.link.Attrs().Name, err)
 		}
 	}
+}
+
+func removeExistingIPs(networkConfigs map[string]*networkConfiguration) error {
+	for _, nwconfig := range networkConfigs {
+		addrs, err := networkLink.AddrList(nwconfig.link, netlink.FAMILY_V4)
+		if err != nil {
+			return err
+		}
+
+		for _, addr := range addrs {
+			if err := networkLink.AddrDel(nwconfig.link, &addr); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }
 
 func configureInterfaces(networkConfigs map[string]*networkConfiguration) (int, int) {

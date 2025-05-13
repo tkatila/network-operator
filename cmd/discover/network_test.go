@@ -598,3 +598,39 @@ func TestSetLinkMTUWarning(_ *testing.T) {
 
 	interfacesSetMTU(netConfs, 8080)
 }
+
+func TestRemoveExistingIPs(t *testing.T) {
+	netConfs := getFakeNetworkDataConfigs()
+
+	networkLink.AddrDel = func(link netlink.Link, addr *netlink.Addr) error {
+		return nil
+	}
+	networkLink.AddrList = fakeLinkAddrList
+
+	err := removeExistingIPs(netConfs)
+	if err != nil {
+		t.Error("removeExistingIPs should have passed")
+	}
+}
+
+func TestRemoveExistingIPsErrors(t *testing.T) {
+	netConfs := getFakeNetworkDataConfigs()
+
+	networkLink.AddrList = fakeLinkAddrListErr
+
+	err := removeExistingIPs(netConfs)
+	if err == nil {
+		t.Error("removeExistingIPs should have failed")
+	}
+
+	networkLink.AddrList = fakeLinkAddrList
+
+	networkLink.AddrDel = func(link netlink.Link, addr *netlink.Addr) error {
+		return fmt.Errorf("cant remove addr")
+	}
+
+	err = removeExistingIPs(netConfs)
+	if err == nil {
+		t.Error("removeExistingIPs should have failed")
+	}
+}

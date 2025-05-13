@@ -121,13 +121,8 @@ func detectLLDP(config *cmdConfig, networkConfigs map[string]*networkConfigurati
 	}
 }
 
-func cmdRun(config *cmdConfig) error {
-	err := sanitizeInput(config)
-	if err != nil {
-		return err
-	}
-
-	if _, err = os.Stat(nfdLabelFile); err == nil {
+func preCleanups(config *cmdConfig) error {
+	if _, err := os.Stat(nfdLabelFile); err == nil {
 		klog.Infof("NFD label file already exists, removing it...\n")
 
 		if err = os.Remove(nfdLabelFile); err != nil {
@@ -140,6 +135,37 @@ func cmdRun(config *cmdConfig) error {
 			return fmt.Errorf("Cannot create systemd-networkd directory: %v", err)
 		}
 		klog.Infof("Created systemd-networkd directory %s", config.networkd)
+	}
+
+	return nil
+}
+
+func postCleanups(networkConfigs map[string]*networkConfiguration) {
+	klog.Info("Clean up before exiting...")
+
+	err := os.Remove(nfdLabelFile)
+	if err != nil {
+		klog.Warningf("Failed to remove NFD label file: %+v\n", err)
+	}
+
+	klog.Infof("Restoring interfaces to original state...")
+	if err := removeExistingIPs(networkConfigs); err != nil {
+		klog.Warningf("Failed to remove any existing IPs from interfaces: %+v\n", err)
+	}
+
+	if err := interfacesRestoreDown(networkConfigs); err != nil {
+		klog.Warningf("Failed to restore interfaces to original state: %+v\n", err)
+	}
+}
+
+func cmdRun(config *cmdConfig) error {
+	err := sanitizeInput(config)
+	if err != nil {
+		return err
+	}
+
+	if err := preCleanups(config); err != nil {
+		return fmt.Errorf("Failed to pre-cleanup: %v", err)
 	}
 
 	allInterfaces := getNetworks()
@@ -169,6 +195,10 @@ func cmdRun(config *cmdConfig) error {
 	}
 
 	interfacesSetMTU(networkConfigs, config.mtu)
+
+	if err := removeExistingIPs(networkConfigs); err != nil {
+		return fmt.Errorf("Failed to remove any existing IPs from interfaces: %+v", err)
+	}
 
 	if config.mode == L3 {
 		detectLLDP(config, networkConfigs)
@@ -212,14 +242,7 @@ func cmdRun(config *cmdConfig) error {
 
 		klog.Infof("Configurations done. Idling...")
 
-		defer func() {
-			klog.Info("Remove NFD label file")
-
-			err := os.Remove(nfdLabelFile)
-			if err != nil {
-				klog.Warningf("Failed to remove NFD label file: %+v\n", err)
-			}
-		}()
+		defer postCleanups(networkConfigs)
 
 		term := make(chan os.Signal, 1)
 
