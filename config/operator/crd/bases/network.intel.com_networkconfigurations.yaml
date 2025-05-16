@@ -60,12 +60,6 @@ spec:
                     description: Container image to handle interface configurations
                       on the worker nodes.
                     type: string
-                  l3IpRange:
-                    description: |-
-                      IP range to be distributed for the scale-out interfaces over all nodes. Used with L3 layer selection.
-                      Should be an IPv4 subnet string. e.g. 192.168.100.0/24
-                      TODO: move to an external CRD and refer here?
-                    type: string
                   layer:
                     description: 'Layer where the configuration should occur. Possible
                       options: L2 and L3.'

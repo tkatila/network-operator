@@ -17,6 +17,7 @@ package v1alpha1
 import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var _ = Describe("NetworkConfiguration Webhook", func() {
@@ -54,52 +55,12 @@ var _ = Describe("NetworkConfiguration Webhook", func() {
 			Expect(nc.ValidateCreate()).Error().To(BeEquivalentTo(unknownConfigurationError{}))
 		})
 
-		It("Should deny if there's a bad IP range InputVal", func() {
-			nc := NetworkConfiguration{
-				Spec: NetworkConfigurationSpec{
-					ConfigurationType: gaudiScaleOut,
-					GaudiScaleOut: GaudiScaleOutSpec{
-						Layer: "L3",
-					},
-					NodeSelector: map[string]string{
-						"foo": "bar",
-					},
-				},
-			}
-
-			nc.Spec.GaudiScaleOut.L3IpRange = "10.0.0/20"
-
-			Expect(nc.ValidateCreate()).Error().NotTo(BeNil())
-
-			nc.Spec.GaudiScaleOut.L3IpRange = "10.10.0.0/44"
-
-			Expect(nc.ValidateCreate()).Error().NotTo(BeNil())
-		})
-
-		It("Should accept if there's a good IP range", func() {
-			nc := NetworkConfiguration{
-				Spec: NetworkConfigurationSpec{
-					ConfigurationType: gaudiScaleOut,
-					GaudiScaleOut: GaudiScaleOutSpec{
-						Layer:     "L3BGP",
-						L3IpRange: "10.20.0.0/20",
-					},
-					NodeSelector: map[string]string{
-						"foo": "bar",
-					},
-				},
-			}
-
-			Expect(nc.ValidateCreate()).Error().To(BeNil())
-		})
-
 		It("Should accept good nodeSelectors", func() {
 			nc := NetworkConfiguration{
 				Spec: NetworkConfigurationSpec{
 					ConfigurationType: gaudiScaleOut,
 					GaudiScaleOut: GaudiScaleOutSpec{
-						Layer:     "L3BGP",
-						L3IpRange: "10.20.0.0/20",
+						Layer: "L3BGP",
 					},
 					NodeSelector: map[string]string{},
 				},
@@ -122,8 +83,7 @@ var _ = Describe("NetworkConfiguration Webhook", func() {
 				Spec: NetworkConfigurationSpec{
 					ConfigurationType: gaudiScaleOut,
 					GaudiScaleOut: GaudiScaleOutSpec{
-						Layer:     "L3",
-						L3IpRange: "10.20.0.0/20",
+						Layer: "L3",
 					},
 					NodeSelector: map[string]string{
 						"foobar.com?foo": "bar",
@@ -151,11 +111,13 @@ var _ = Describe("NetworkConfiguration Webhook", func() {
 
 		It("Should accept update with good values and fail with bad ones InputVal", func() {
 			nc := NetworkConfiguration{
+				ObjectMeta: v1.ObjectMeta{
+					Name: "test",
+				},
 				Spec: NetworkConfigurationSpec{
 					ConfigurationType: gaudiScaleOut,
 					GaudiScaleOut: GaudiScaleOutSpec{
-						Layer:     "L3BGP",
-						L3IpRange: "10.20.0.0/20",
+						Layer: "L3",
 					},
 					NodeSelector: map[string]string{
 						"foo": "bar",
@@ -166,7 +128,9 @@ var _ = Describe("NetworkConfiguration Webhook", func() {
 
 			Expect(nc2.ValidateUpdate(&nc)).Error().To(BeNil())
 
-			nc2.Spec.GaudiScaleOut.L3IpRange = "10.20.0.0/99" // bad
+			nc2.Spec.NodeSelector = map[string]string{
+				"foobar.com?foo": "bar", // bad
+			}
 
 			Expect(nc2.ValidateUpdate(&nc)).Error().NotTo(BeNil())
 		})
@@ -176,8 +140,7 @@ var _ = Describe("NetworkConfiguration Webhook", func() {
 				Spec: NetworkConfigurationSpec{
 					ConfigurationType: gaudiScaleOut,
 					GaudiScaleOut: GaudiScaleOutSpec{
-						Layer:     "L3BGP",
-						L3IpRange: "10.20.0.0/20",
+						Layer: "L3BGP",
 					},
 					NodeSelector: map[string]string{
 						"foo": "bar",

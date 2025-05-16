@@ -15,9 +15,7 @@
 package v1alpha1
 
 import (
-	"net/netip"
 	"regexp"
-	"strconv"
 	"strings"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -33,12 +31,6 @@ var networkconfigurationlog = logf.Log.WithName("networkconfiguration-resource")
 const (
 	gaudiScaleOut = "gaudi-so"
 )
-
-type ipRangeError struct{}
-
-func (i ipRangeError) Error() string {
-	return "Invalid IP Range provided"
-}
 
 type emptyNodeSelectorError struct{}
 
@@ -93,27 +85,6 @@ var labelPathRegex = regexp.MustCompile(`^([A-Za-z0-9][A-Za-z0-9-\._\/]*)?[A-Za-
 var labelValueRegex = regexp.MustCompile(`^(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?$`)
 
 func validateGaudiSoSpec(s GaudiScaleOutSpec) error {
-	if len(s.L3IpRange) > 0 {
-		if !strings.Contains(s.L3IpRange, "/") {
-			return ipRangeError{}
-		}
-
-		parts := strings.Split(s.L3IpRange, "/")
-
-		_, err := netip.ParseAddr(parts[0])
-		if err != nil {
-			return err
-		}
-
-		mask, err := strconv.ParseUint(parts[1], 10, 8)
-		if err != nil {
-			return err
-		}
-		if mask > 32 {
-			return ipRangeError{}
-		}
-	}
-
 	return nil
 }
 
