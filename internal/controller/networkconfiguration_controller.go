@@ -38,7 +38,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/google/go-cmp/cmp"
 	networkv1alpha1 "github.com/intel/network-operator/api/v1alpha1"
-	daemonsets "github.com/intel/network-operator/config/daemonsets"
+	discovery "github.com/intel/network-operator/config/discovery"
 )
 
 //+kubebuilder:rbac:groups=network.intel.com,resources=networkconfigurations,verbs=get;list;watch;create;update;patch;delete
@@ -117,7 +117,7 @@ func (r *NetworkConfigurationReconciler) createOpenShiftCollateral(ctx context.C
 
 	log.Info("Creating OpenShift collateral")
 
-	sa := daemonsets.GaudiLinkDiscoveryServiceAccount()
+	sa := discovery.GaudiLinkDiscoveryServiceAccount()
 	sa.Name = serviceAccountName
 	sa.ObjectMeta.Namespace = r.Namespace
 
@@ -137,7 +137,7 @@ func (r *NetworkConfigurationReconciler) createOpenShiftCollateral(ctx context.C
 
 	log.Info("Service account created", "name", sa.Name)
 
-	rb := daemonsets.OpenShiftRoleBinding()
+	rb := discovery.OpenShiftRoleBinding()
 	rb.Name = serviceAccountName + "-rb"
 	rb.ObjectMeta.Namespace = r.Namespace
 	rb.Subjects = []rbac.Subject{
@@ -208,7 +208,7 @@ func updateGaudiScaleOutDaemonSet(ds *apps.DaemonSet, netconf *networkv1alpha1.N
 }
 
 func (r *NetworkConfigurationReconciler) createGaudiScaleOutDaemonset(netconf client.Object, ctx context.Context, log logr.Logger) (ctrl.Result, error) {
-	ds := daemonsets.GaudiL3BGPDaemonSet()
+	ds := discovery.GaudiDiscoveryDaemonSet()
 
 	cr := netconf.(*networkv1alpha1.NetworkConfiguration)
 

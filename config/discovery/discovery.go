@@ -23,8 +23,8 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-//go:embed gaudi/internal/linkdiscovery.yaml
-var contentGaudiL3BGPConf []byte
+//go:embed base/daemonset.yaml
+var contentGaudiDiscoveryDs []byte
 
 //go:embed generic/linkdiscovery-serviceaccount.yaml
 var contentLinkDiscoveryServiceAccount []byte
@@ -32,8 +32,8 @@ var contentLinkDiscoveryServiceAccount []byte
 //go:embed openshift/rolebinding.yaml
 var contentOpenshiftRoleBinding []byte
 
-func GaudiL3BGPDaemonSet() *apps.DaemonSet {
-	return getDaemonset(contentGaudiL3BGPConf).DeepCopy()
+func GaudiDiscoveryDaemonSet() *apps.DaemonSet {
+	return getDaemonset(contentGaudiDiscoveryDs).DeepCopy()
 }
 
 func GaudiLinkDiscoveryServiceAccount() *core.ServiceAccount {

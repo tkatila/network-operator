@@ -21,7 +21,7 @@ RUN go mod download
 # Copy the go source
 COPY cmd/operator cmd/operator
 COPY api/ api/
-COPY config/daemonsets config/daemonsets
+COPY config/discovery config/discovery
 COPY internal/controller/ internal/controller/
 
 # Build

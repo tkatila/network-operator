@@ -19,7 +19,7 @@ import (
 )
 
 func TestGetDaemonset(t *testing.T) {
-	ds := GaudiL3BGPDaemonSet()
+	ds := GaudiDiscoveryDaemonSet()
 	if ds == nil {
 		t.Error("expected to receive a valid daemonset")
 	}

@@ -63,9 +63,7 @@ Make sure you have the proper permission to the registry if the above commands d
 **Install the CRDs into the cluster:**
 
 ```sh
-make install
-#or
-kubectl apply -k config/default
+kubectl apply -k config/operator/default/
 ```
 
 **Deploy the Manager to the cluster with the image specified by `IMG`:**
@@ -83,7 +81,7 @@ privileges or be logged in as admin.
 You can apply a Gaudi L3 example:
 
 ```sh
-kubectl apply -f config/samples/gaudi-l3.yaml
+kubectl apply -f config/operator/samples/gaudi-l3.yaml
 ```
 
 >**NOTE**: Ensure that the samples has default values to test it out.
@@ -92,19 +90,13 @@ kubectl apply -f config/samples/gaudi-l3.yaml
 **Delete the instances (CRs) from the cluster:**
 
 ```sh
-kubectl delete -f config/samples/gaudi-l3.yaml
-```
-
-**Delete the APIs(CRDs) from the cluster:**
-
-```sh
-make uninstall
+kubectl delete -f config/operator/samples/gaudi-l3.yaml
 ```
 
 **UnDeploy the controller from the cluster:**
 
 ```sh
-make undeploy
+kubectl delete -k config/operator/default/
 ```
 
 ## Project Distribution
