@@ -80,20 +80,6 @@ spec:
                     - IfNotPresent
                     type: string
                 type: object
-              hostnicScaleOut:
-                description: Host-NIC Scale-Out specific settings. Only valid when
-                  configuration type is 'host-nic'
-                properties:
-                  ipRange:
-                    description: IP range to be distributed for the scale-out interfaces
-                      over all nodes.
-                    type: string
-                  vendor:
-                    description: Vendor for the scale-out NIC(s).
-                    enum:
-                    - melanox
-                    type: string
-                type: object
               logLevel:
                 description: LogLevel sets the operator's log level.
                 maximum: 8

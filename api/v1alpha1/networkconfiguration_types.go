@@ -35,9 +35,6 @@ type NetworkConfigurationSpec struct {
 	// Gaudi Scale-Out specific settings. Only valid when configuration type is 'gaudi-so'
 	GaudiScaleOut GaudiScaleOutSpec `json:"gaudiScaleOut,omitempty"`
 
-	// Host-NIC Scale-Out specific settings. Only valid when configuration type is 'host-nic'
-	HostNicScaleOut HostNicScaleOutSpec `json:"hostnicScaleOut,omitempty"`
-
 	// LogLevel sets the operator's log level.
 	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=8
@@ -66,17 +63,6 @@ type GaudiScaleOutSpec struct {
 	// +kubebuilder:validation:Minimum=1500
 	// +kubebuilder:validation:Maximum=9000
 	MTU int `json:"mtu,omitempty"`
-}
-
-// Alternative to Gaudi ScaleOut spec
-// NOTE: Highly subject to change
-type HostNicScaleOutSpec struct {
-	// IP range to be distributed for the scale-out interfaces over all nodes.
-	IPRange string `json:"ipRange,omitempty"`
-
-	// Vendor for the scale-out NIC(s).
-	// +kubebuilder:validation:Enum=melanox
-	Vendor string `json:"vendor,omitempty"`
 }
 
 // NetworkConfigurationStatus defines the observed state of NetworkConfiguration

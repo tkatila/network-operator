@@ -20,7 +20,7 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-var _ = Describe("NetworkConfiguration Webhook", func() {
+var _ = Describe("NicClusterPolicy Webhook", func() {
 
 	Context("When creating NetworkConfiguration under Defaulting Webhook", func() {
 		It("Should fill in the default value if layer 3 is selected with Gaudi", func() {
