@@ -200,17 +200,17 @@ func main() {
 		setupLog.Info("Detected OpenShift environment")
 	}
 
-	if err = (&controller.NetworkConfigurationReconciler{
+	if err = (&controller.NetworkClusterPolicyReconciler{
 		Client:    mgr.GetClient(),
 		Scheme:    mgr.GetScheme(),
 		Namespace: ns,
 	}).SetupWithManager(mgr, isInOpenShift); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "NetworkConfiguration")
+		setupLog.Error(err, "unable to create controller", "controller", "NetworkClusterPolicy")
 		os.Exit(1)
 	}
 	if os.Getenv("ENABLE_WEBHOOKS") != "false" {
-		if err = (&networkv1alpha1.NetworkConfiguration{}).SetupWebhookWithManager(mgr); err != nil {
-			setupLog.Error(err, "unable to create webhook", "webhook", "NetworkConfiguration")
+		if err = (&networkv1alpha1.NetworkClusterPolicy{}).SetupWebhookWithManager(mgr); err != nil {
+			setupLog.Error(err, "unable to create webhook", "webhook", "NetworkClusterPolicy")
 			os.Exit(1)
 		}
 	}

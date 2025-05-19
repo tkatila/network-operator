@@ -30,7 +30,7 @@ import (
 	networkv1alpha1 "github.com/intel/network-operator/api/v1alpha1"
 )
 
-var _ = Describe("NetworkConfiguration Controller", func() {
+var _ = Describe("NetworkClusterPolicy Controller", func() {
 	const (
 		timeout  = time.Second * 5
 		duration = time.Second * 5
@@ -57,20 +57,20 @@ var _ = Describe("NetworkConfiguration Controller", func() {
 			Namespace: defaultNs,
 		}
 
-		networkconfiguration := &networkv1alpha1.NetworkConfiguration{}
+		nicpolicy := &networkv1alpha1.NetworkClusterPolicy{}
 
 		It("should successfully reconcile the resource", func() {
-			By("creating the custom resource for the Kind NetworkConfiguration")
-			resource := &networkv1alpha1.NetworkConfiguration{
+			By("creating the custom resource for the Kind NetworkClusterPolicy")
+			resource := &networkv1alpha1.NetworkClusterPolicy{
 				TypeMeta: metav1.TypeMeta{
-					APIVersion: "network.intel.com/v1alpha1",
-					Kind:       "NetworkConfiguration",
+					APIVersion: "intel.com/v1alpha1",
+					Kind:       "NetworkClusterPolicy",
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      resourceName,
 					Namespace: defaultNs,
 				},
-				Spec: networkv1alpha1.NetworkConfigurationSpec{
+				Spec: networkv1alpha1.NetworkClusterPolicySpec{
 					ConfigurationType: "gaudi-so",
 					GaudiScaleOut: networkv1alpha1.GaudiScaleOutSpec{
 						Layer: "L3",
@@ -93,10 +93,10 @@ var _ = Describe("NetworkConfiguration Controller", func() {
 			Expect(k8sClient.Create(ctx, resource)).To(Succeed())
 
 			Eventually(func(g Gomega) {
-				g.Expect(k8sClient.Get(ctx, typeNamespacedName, networkconfiguration)).To(Succeed())
-				g.Expect(networkconfiguration.Spec.ConfigurationType).To(BeEquivalentTo("gaudi-so"))
-				g.Expect(networkconfiguration.Status.Targets).To(BeIdenticalTo(int32(0)))
-				g.Expect(networkconfiguration.Status.State).To(BeIdenticalTo("No targets"))
+				g.Expect(k8sClient.Get(ctx, typeNamespacedName, nicpolicy)).To(Succeed())
+				g.Expect(nicpolicy.Spec.ConfigurationType).To(BeEquivalentTo("gaudi-so"))
+				g.Expect(nicpolicy.Status.Targets).To(BeIdenticalTo(int32(0)))
+				g.Expect(nicpolicy.Status.State).To(BeIdenticalTo("No targets"))
 			}, timeout, interval).Should(Succeed())
 
 			var ds apps.DaemonSet
@@ -179,14 +179,14 @@ var _ = Describe("NetworkConfiguration Controller", func() {
 				g.Expect(ds.Spec.Template.Spec.Containers[0].VolumeMounts[3].Name).To(BeEquivalentTo("networkmanager"))
 			}, timeout, interval).Should(Succeed())
 
-			Expect(k8sClient.Delete(ctx, networkconfiguration)).To(Succeed())
+			Expect(k8sClient.Delete(ctx, nicpolicy)).To(Succeed())
 
 			Eventually(func(g Gomega) {
 				g.Expect(k8sClient.Get(ctx, typeNamespacedName, &ds)).To(Not(Succeed()))
 			}, timeout, interval).Should(Not(Succeed()))
 
 			Eventually(func(g Gomega) {
-				g.Expect(k8sClient.Get(ctx, typeNamespacedName, networkconfiguration)).To(Not(Succeed()))
+				g.Expect(k8sClient.Get(ctx, typeNamespacedName, nicpolicy)).To(Not(Succeed()))
 			}, timeout, interval).Should(Succeed())
 		})
 	})

@@ -88,7 +88,7 @@ var _ = BeforeSuite(func() {
 	})
 	Expect(err).ToNot(HaveOccurred())
 
-	err = (&NetworkConfigurationReconciler{
+	err = (&NetworkClusterPolicyReconciler{
 		Client:    k8sManager.GetClient(),
 		Scheme:    k8sManager.GetScheme(),
 		Namespace: "intel-network-operator",

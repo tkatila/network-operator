@@ -1,5 +1,5 @@
-apiVersion: network.intel.com/v1alpha1
-kind: NetworkConfiguration
+apiVersion: intel.com/v1alpha1
+kind: NetworkClusterPolicy
 metadata:
   name: netconf-gaudi-scale-out-l2
 spec:

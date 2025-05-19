@@ -4,20 +4,20 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.14.0
-  name: networkconfigurations.network.intel.com
+  name: networkclusterpolicies.intel.com
 spec:
-  group: network.intel.com
+  group: intel.com
   names:
-    kind: NetworkConfiguration
-    listKind: NetworkConfigurationList
-    plural: networkconfigurations
-    singular: networkconfiguration
+    kind: NetworkClusterPolicy
+    listKind: NetworkClusterPolicyList
+    plural: networkclusterpolicies
+    singular: networkclusterpolicy
   scope: Cluster
   versions:
   - name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: NetworkConfiguration is the Schema for the networkconfigurations
+        description: NetworkClusterPolicy is the Schema for the networkclusterpolicies
           API
         properties:
           apiVersion:
@@ -38,7 +38,7 @@ spec:
           metadata:
             type: object
           spec:
-            description: NetworkConfigurationSpec defines the desired state of NetworkConfiguration
+            description: NetworkClusterPolicySpec defines the desired state of NetworkClusterPolicy
             properties:
               configurationType:
                 description: |-
@@ -95,8 +95,8 @@ spec:
             - configurationType
             type: object
           status:
-            description: NetworkConfigurationStatus defines the observed state of
-              NetworkConfiguration
+            description: NetworkClusterPolicyStatus defines the observed state of
+              NetworkClusterPolicy
             properties:
               errors:
                 items:

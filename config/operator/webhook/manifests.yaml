@@ -10,19 +10,19 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
-      path: /mutate-network-intel-com-v1alpha1-networkconfiguration
+      path: /mutate-intel-com-v1alpha1-networkclusterpolicy
   failurePolicy: Fail
-  name: mnetworkconfiguration.kb.io
+  name: mnetworkclusterpolicy.kb.io
   rules:
   - apiGroups:
-    - network.intel.com
+    - intel.com
     apiVersions:
     - v1alpha1
     operations:
     - CREATE
     - UPDATE
     resources:
-    - networkconfigurations
+    - networkclusterpolicy
   sideEffects: None
 ---
 apiVersion: admissionregistration.k8s.io/v1
@@ -36,17 +36,17 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
-      path: /validate-network-intel-com-v1alpha1-networkconfiguration
+      path: /validate-intel-com-v1alpha1-networkclusterpolicy
   failurePolicy: Fail
-  name: vnetworkconfiguration.kb.io
+  name: vnetworkclusterpolicy.kb.io
   rules:
   - apiGroups:
-    - network.intel.com
+    - intel.com
     apiVersions:
     - v1alpha1
     operations:
     - CREATE
     - UPDATE
     resources:
-    - networkconfigurations
+    - networkclusterpolicy
   sideEffects: None

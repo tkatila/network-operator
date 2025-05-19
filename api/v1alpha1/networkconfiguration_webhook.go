@@ -26,7 +26,7 @@ import (
 )
 
 // log is for logging in this package.
-var networkconfigurationlog = logf.Log.WithName("networkconfiguration-resource")
+var netpolicylog = logf.Log.WithName("nicclusterpolicy-resource")
 
 const (
 	gaudiScaleOut = "gaudi-so"
@@ -51,19 +51,19 @@ func (e unknownConfigurationError) Error() string {
 }
 
 // SetupWebhookWithManager will setup the manager to manage the webhooks
-func (r *NetworkConfiguration) SetupWebhookWithManager(mgr ctrl.Manager) error {
+func (r *NetworkClusterPolicy) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
 		For(r).
 		Complete()
 }
 
-//+kubebuilder:webhook:path=/mutate-network-intel-com-v1alpha1-networkconfiguration,mutating=true,failurePolicy=fail,sideEffects=None,groups=network.intel.com,resources=networkconfigurations,verbs=create;update,versions=v1alpha1,name=mnetworkconfiguration.kb.io,admissionReviewVersions=v1
+//+kubebuilder:webhook:path=/mutate-intel-com-v1alpha1-networkclusterpolicy,mutating=true,failurePolicy=fail,sideEffects=None,groups=intel.com,resources=networkclusterpolicy,verbs=create;update,versions=v1alpha1,name=mnetworkclusterpolicy.kb.io,admissionReviewVersions=v1
 
-var _ webhook.Defaulter = &NetworkConfiguration{}
+var _ webhook.Defaulter = &NetworkClusterPolicy{}
 
 // Default implements webhook.Defaulter so a webhook will be registered for the type
-func (r *NetworkConfiguration) Default() {
-	networkconfigurationlog.Info("default", "name", r.Name)
+func (r *NetworkClusterPolicy) Default() {
+	netpolicylog.Info("default", "name", r.Name)
 
 	switch r.Spec.ConfigurationType {
 	case gaudiScaleOut:
@@ -76,9 +76,9 @@ func (r *NetworkConfiguration) Default() {
 // TODO(user): change verbs to "verbs=create;update;delete" if you want to enable deletion validation.
 // NOTE: The 'path' attribute must follow a specific pattern and should not be modified directly here.
 // Modifying the path for an invalid path can cause API server errors; failing to locate the webhook.
-//+kubebuilder:webhook:path=/validate-network-intel-com-v1alpha1-networkconfiguration,mutating=false,failurePolicy=fail,sideEffects=None,groups=network.intel.com,resources=networkconfigurations,verbs=create;update,versions=v1alpha1,name=vnetworkconfiguration.kb.io,admissionReviewVersions=v1
+//+kubebuilder:webhook:path=/validate-intel-com-v1alpha1-networkclusterpolicy,mutating=false,failurePolicy=fail,sideEffects=None,groups=intel.com,resources=networkclusterpolicy,verbs=create;update,versions=v1alpha1,name=vnetworkclusterpolicy.kb.io,admissionReviewVersions=v1
 
-var _ webhook.Validator = &NetworkConfiguration{}
+var _ webhook.Validator = &NetworkClusterPolicy{}
 
 var labelHostRegex = regexp.MustCompile(`^([A-Za-z0-9][A-Za-z0-9_\.]*)?[A-Za-z0-9]$`)
 var labelPathRegex = regexp.MustCompile(`^([A-Za-z0-9][A-Za-z0-9-\._\/]*)?[A-Za-z0-9]$`)
@@ -118,7 +118,7 @@ func validateNodeSelector(nodeSelector map[string]string) error {
 	return nil
 }
 
-func validateSpec(s NetworkConfigurationSpec) (admission.Warnings, error) {
+func validateSpec(s NetworkClusterPolicySpec) (admission.Warnings, error) {
 	if err := validateNodeSelector(s.NodeSelector); err != nil {
 		return nil, err
 	}
@@ -132,22 +132,22 @@ func validateSpec(s NetworkConfigurationSpec) (admission.Warnings, error) {
 }
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
-func (r *NetworkConfiguration) ValidateCreate() (admission.Warnings, error) {
-	networkconfigurationlog.Info("validate create", "name", r.Name)
+func (r *NetworkClusterPolicy) ValidateCreate() (admission.Warnings, error) {
+	netpolicylog.Info("validate create", "name", r.Name)
 
 	return validateSpec(r.Spec)
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
-func (r *NetworkConfiguration) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
-	networkconfigurationlog.Info("validate update", "name", r.Name)
+func (r *NetworkClusterPolicy) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
+	netpolicylog.Info("validate update", "name", r.Name)
 
 	return validateSpec(r.Spec)
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
-func (r *NetworkConfiguration) ValidateDelete() (admission.Warnings, error) {
-	networkconfigurationlog.Info("validate delete", "name", r.Name)
+func (r *NetworkClusterPolicy) ValidateDelete() (admission.Warnings, error) {
+	netpolicylog.Info("validate delete", "name", r.Name)
 
 	return nil, nil
 }

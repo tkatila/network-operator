@@ -56,15 +56,15 @@ func FuzzNetworkConfigurationGaudiSO(f *testing.F) {
 	f.Add("gaudinode", "L2", "tool:latest", 1)
 
 	f.Fuzz(func(t *testing.T, nodeType, layer, image string, logLevel int) {
-		spec := &api.NetworkConfiguration{
+		spec := &api.NetworkClusterPolicy{
 			TypeMeta: v1.TypeMeta{
-				Kind:       "NetworkConfiguration",
-				APIVersion: "network.intel.com/v1alpha1",
+				Kind:       "NetworkClusterPolicy",
+				APIVersion: "intel.com/v1alpha1",
 			},
 			ObjectMeta: v1.ObjectMeta{
 				Name: "test-network-configuration-gaudi-so",
 			},
-			Spec: api.NetworkConfigurationSpec{
+			Spec: api.NetworkClusterPolicySpec{
 				ConfigurationType: "gaudi-so",
 				NodeSelector: map[string]string{
 					"nodetype": nodeType,
@@ -80,65 +80,6 @@ func FuzzNetworkConfigurationGaudiSO(f *testing.F) {
 
 		// Apply and delete, don't care for the result.
 		// Operator should be observed for ERRORs and crashes.
-		kubernetesClient.Create(context.Background(), spec)
-
-		time.Sleep(time.Millisecond * 5)
-
-		kubernetesClient.Delete(context.Background(), spec)
-	})
-}
-
-func FuzzNetworkConfigurationHostNIC(f *testing.F) {
-	fmt.Println("Fuzzing NetworkConfiguration - HostNIC")
-
-	scheme := runtime.NewScheme()
-	err := api.AddToScheme(scheme)
-	if err != nil {
-		f.Fatalf("failed to register scheme: %v", err)
-	}
-
-	kubeconfig := os.Getenv("KUBECONFIG")
-	if kubeconfig == "" {
-		f.Fatalf("No KUBECONFIG env set, cannot continue")
-	}
-
-	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
-	if err != nil {
-		f.Fatalf("failed to create config: %v", err)
-	}
-
-	kubernetesClient, err := client.New(config, client.Options{Scheme: scheme})
-	if err != nil {
-		f.Fatalf("failed to create client: %v", err)
-	}
-
-	f.Add("gaudinode", "intel", "192.168.10.0/28", 1)
-
-	f.Fuzz(func(t *testing.T, nodeType, vendor, iprange string, logLevel int) {
-		spec := &api.NetworkConfiguration{
-			TypeMeta: v1.TypeMeta{
-				Kind:       "NetworkConfiguration",
-				APIVersion: "network.intel.com/v1alpha1",
-			},
-			ObjectMeta: v1.ObjectMeta{
-				Name: "test-network-configuration-host-nic",
-			},
-			Spec: api.NetworkConfigurationSpec{
-				ConfigurationType: "host-nic",
-				NodeSelector: map[string]string{
-					"nodetype": nodeType,
-				},
-				HostNicScaleOut: api.HostNicScaleOutSpec{
-					Vendor:  "intel",
-					IPRange: iprange,
-				},
-				LogLevel: logLevel,
-			},
-		}
-
-		// Apply and delete, don't care for the result.
-		// Operator should be observed for ERRORs and crashes.
-
 		kubernetesClient.Create(context.Background(), spec)
 
 		time.Sleep(time.Millisecond * 5)

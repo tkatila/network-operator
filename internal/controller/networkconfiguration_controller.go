@@ -12,10 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// TODO:
-// * Move gaudi scale-out specific code under a "gaudi controller". In preparation for host-nic scale-out scenarios.
-// * Gather possible warnings/errors from Pods into CR's errors
-
 package controller
 
 import (
@@ -41,17 +37,17 @@ import (
 	discovery "github.com/intel/network-operator/config/discovery"
 )
 
-//+kubebuilder:rbac:groups=network.intel.com,resources=networkconfigurations,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=network.intel.com,resources=networkconfigurations/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=network.intel.com,resources=networkconfigurations/finalizers,verbs=update
+//+kubebuilder:rbac:groups=intel.com,resources=networkclusterpolicies,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=intel.com,resources=networkclusterpolicies/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=intel.com,resources=networkclusterpolicies/finalizers,verbs=update
 //+kubebuilder:rbac:groups=apps,resources=daemonsets,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=core,resources=serviceaccounts,verbs=get;list;create;delete
 //+kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=rolebindings,verbs=get;list;create;delete
 //+kubebuilder:rbac:groups="",resources=pods,verbs=get;list;watch
 //+kubebuilder:rbac:groups="",resources=events,verbs=get;list;watch
 
-// NetworkConfigurationReconciler reconciles a NetworkConfiguration object
-type NetworkConfigurationReconciler struct {
+// NetworkClusterPolicyReconciler reconciles a NetworkClusterPolicy object
+type NetworkClusterPolicyReconciler struct {
 	client.Client
 	Scheme      *runtime.Scheme
 	Namespace   string
@@ -110,7 +106,7 @@ func addHostVolume(ds *apps.DaemonSet, volumeType v1.HostPathType, volumeName, h
 	}
 }
 
-func (r *NetworkConfigurationReconciler) createOpenShiftCollateral(ctx context.Context, log logr.Logger, parent metav1.Object, serviceAccountName string) {
+func (r *NetworkClusterPolicyReconciler) createOpenShiftCollateral(ctx context.Context, log logr.Logger, parent metav1.Object, serviceAccountName string) {
 	if serviceAccountName == "" {
 		return
 	}
@@ -165,7 +161,7 @@ func (r *NetworkConfigurationReconciler) createOpenShiftCollateral(ctx context.C
 	log.Info("Role binding created", "name", rb.Name)
 }
 
-func updateGaudiScaleOutDaemonSet(ds *apps.DaemonSet, netconf *networkv1alpha1.NetworkConfiguration, namespace string) {
+func updateGaudiScaleOutDaemonSet(ds *apps.DaemonSet, netconf *networkv1alpha1.NetworkClusterPolicy, namespace string) {
 	ds.Name = netconf.Name
 	ds.ObjectMeta.Namespace = namespace
 
@@ -207,10 +203,10 @@ func updateGaudiScaleOutDaemonSet(ds *apps.DaemonSet, netconf *networkv1alpha1.N
 	ds.Spec.Template.Spec.Containers[0].Args = args
 }
 
-func (r *NetworkConfigurationReconciler) createGaudiScaleOutDaemonset(netconf client.Object, ctx context.Context, log logr.Logger) (ctrl.Result, error) {
+func (r *NetworkClusterPolicyReconciler) createGaudiScaleOutDaemonset(netconf client.Object, ctx context.Context, log logr.Logger) (ctrl.Result, error) {
 	ds := discovery.GaudiDiscoveryDaemonSet()
 
-	cr := netconf.(*networkv1alpha1.NetworkConfiguration)
+	cr := netconf.(*networkv1alpha1.NetworkClusterPolicy)
 
 	log.Info("Creating Gaudi Scale-Out DaemonSet", "name", cr.Name)
 
@@ -244,8 +240,8 @@ func (r *NetworkConfigurationReconciler) createGaudiScaleOutDaemonset(netconf cl
 	return ctrl.Result{}, nil
 }
 
-func (r *NetworkConfigurationReconciler) createDaemonSet(ctx context.Context, netconf client.Object, log logr.Logger) (ctrl.Result, error) {
-	cr := netconf.(*networkv1alpha1.NetworkConfiguration)
+func (r *NetworkClusterPolicyReconciler) createDaemonSet(ctx context.Context, netconf client.Object, log logr.Logger) (ctrl.Result, error) {
+	cr := netconf.(*networkv1alpha1.NetworkClusterPolicy)
 
 	switch cr.Spec.ConfigurationType {
 	case gaudiScaleOutSelection:
@@ -257,8 +253,8 @@ func (r *NetworkConfigurationReconciler) createDaemonSet(ctx context.Context, ne
 	}
 }
 
-func (r *NetworkConfigurationReconciler) updateDaemonSet(ds *apps.DaemonSet, netconf client.Object) {
-	cr := netconf.(*networkv1alpha1.NetworkConfiguration)
+func (r *NetworkClusterPolicyReconciler) updateDaemonSet(ds *apps.DaemonSet, netconf client.Object) {
+	cr := netconf.(*networkv1alpha1.NetworkClusterPolicy)
 
 	switch cr.Spec.ConfigurationType {
 	case gaudiScaleOutSelection:
@@ -268,8 +264,8 @@ func (r *NetworkConfigurationReconciler) updateDaemonSet(ds *apps.DaemonSet, net
 	}
 }
 
-func (r *NetworkConfigurationReconciler) updateStatus(rawObj client.Object, ds *apps.DaemonSet, ctx context.Context, log logr.Logger) (ctrl.Result, error) {
-	nc := rawObj.(*networkv1alpha1.NetworkConfiguration)
+func (r *NetworkClusterPolicyReconciler) updateStatus(rawObj client.Object, ds *apps.DaemonSet, ctx context.Context, log logr.Logger) (ctrl.Result, error) {
+	nc := rawObj.(*networkv1alpha1.NetworkClusterPolicy)
 
 	updated := false
 
@@ -311,10 +307,10 @@ func (r *NetworkConfigurationReconciler) updateStatus(rawObj client.Object, ds *
 }
 
 func createEmptyObject() client.Object {
-	return &networkv1alpha1.NetworkConfiguration{}
+	return &networkv1alpha1.NetworkClusterPolicy{}
 }
 
-func (r *NetworkConfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (r *NetworkClusterPolicyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := log.FromContext(ctx)
 
 	log.Info("Reconcile now.")
@@ -323,7 +319,7 @@ func (r *NetworkConfigurationReconciler) Reconcile(ctx context.Context, req ctrl
 
 	if err := r.Get(ctx, req.NamespacedName, netConfObj); err != nil {
 		if client.IgnoreNotFound(err) != nil {
-			log.Error(err, "unable to fetch NetworkConfiguration")
+			log.Error(err, "unable to fetch NetworkClusterPolicies")
 		}
 
 		return ctrl.Result{}, client.IgnoreNotFound(err)
@@ -408,13 +404,13 @@ func indexPods(ctx context.Context, mgr ctrl.Manager) error {
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *NetworkConfigurationReconciler) SetupWithManager(mgr ctrl.Manager, isOpenShift bool) error {
+func (r *NetworkClusterPolicyReconciler) SetupWithManager(mgr ctrl.Manager, isOpenShift bool) error {
 	r.Scheme = mgr.GetScheme()
 	r.isOpenShift = isOpenShift
 
 	ctx := context.Background()
 	apiGVString := networkv1alpha1.GroupVersion.String()
-	kind := "NetworkConfiguration"
+	kind := "NetworkClusterPolicy"
 
 	// Index DaemonSets (CR).
 	if err := indexDaemonSets(ctx, mgr, apiGVString, kind); err != nil {
@@ -427,7 +423,7 @@ func (r *NetworkConfigurationReconciler) SetupWithManager(mgr ctrl.Manager, isOp
 	}
 
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&networkv1alpha1.NetworkConfiguration{}).
+		For(&networkv1alpha1.NetworkClusterPolicy{}).
 		Owns(&apps.DaemonSet{}).
 		Complete(r)
 }

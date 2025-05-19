@@ -16,8 +16,7 @@ resources:
     namespaced: true
   controller: true
   domain: intel.com
-  group: network
-  kind: NetworkConfiguration
+  kind: NetworkClusterPolicy
   path: github.com/intel/network-operator/api/v1alpha1
   version: v1alpha1
   webhooks:

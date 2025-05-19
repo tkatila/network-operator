@@ -1,23 +1,27 @@
-# permissions for end users to view networkconfigurations.
+# permissions for end users to edit networkclusterpolicies.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   labels:
     app.kubernetes.io/name: network-operator
     app.kubernetes.io/managed-by: kustomize
-  name: networkconfiguration-viewer-role
+  name: networkclusterpolicy-editor-role
 rules:
 - apiGroups:
-  - network.intel.com
+  - intel.com
   resources:
-  - networkconfigurations
+  - networkclusterpolicies
   verbs:
+  - create
+  - delete
   - get
   - list
+  - patch
+  - update
   - watch
 - apiGroups:
-  - network.intel.com
+  - intel.com
   resources:
-  - networkconfigurations/status
+  - networkclusterpolicies/status
   verbs:
   - get

@@ -42,9 +42,9 @@ rules:
   - get
   - list
 - apiGroups:
-  - network.intel.com
+  - intel.com
   resources:
-  - networkconfigurations
+  - networkclusterpolicies
   verbs:
   - create
   - delete
@@ -54,15 +54,15 @@ rules:
   - update
   - watch
 - apiGroups:
-  - network.intel.com
+  - intel.com
   resources:
-  - networkconfigurations/finalizers
+  - networkclusterpolicies/finalizers
   verbs:
   - update
 - apiGroups:
-  - network.intel.com
+  - intel.com
   resources:
-  - networkconfigurations/status
+  - networkclusterpolicies/status
   verbs:
   - get
   - patch

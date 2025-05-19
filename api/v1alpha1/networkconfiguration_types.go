@@ -20,8 +20,8 @@ import (
 
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
-// NetworkConfigurationSpec defines the desired state of NetworkConfiguration
-type NetworkConfigurationSpec struct {
+// NetworkClusterPolicySpec defines the desired state of NetworkClusterPolicy
+type NetworkClusterPolicySpec struct {
 	// Configuration type that the operator will configure to the nodes. Possible options: gaudi-so.
 	// TODO: plausible other options: host-nic
 	// +kubebuilder:validation:Enum=gaudi-so
@@ -41,7 +41,7 @@ type NetworkConfigurationSpec struct {
 	LogLevel int `json:"logLevel,omitempty"`
 }
 
-// NetworkConfigurationSpec defines the desired state of NetworkConfiguration
+// GaudiScaleOutSpec defines the desired state of GaudiScaleOut
 type GaudiScaleOutSpec struct {
 	// Disable Gaudi scale-out interfaces in NetworkManager. For nodes where NetworkManager tries
 	// to configure the Gaudi interfaces, prevent it from doing so.
@@ -65,8 +65,8 @@ type GaudiScaleOutSpec struct {
 	MTU int `json:"mtu,omitempty"`
 }
 
-// NetworkConfigurationStatus defines the observed state of NetworkConfiguration
-type NetworkConfigurationStatus struct {
+// NetworkClusterPolicyStatus defines the observed state of NetworkClusterPolicy
+type NetworkClusterPolicyStatus struct {
 	Targets    int32    `json:"targets"`
 	ReadyNodes int32    `json:"ready"`
 	State      string   `json:"state"`
@@ -74,27 +74,27 @@ type NetworkConfigurationStatus struct {
 }
 
 //+kubebuilder:object:root=true
-//+kubebuilder:resource:path=networkconfigurations,scope=Cluster
+//+kubebuilder:resource:path=networkclusterpolicies,scope=Cluster
 //+kubebuilder:subresource:status
 
-// NetworkConfiguration is the Schema for the networkconfigurations API
-type NetworkConfiguration struct {
+// NetworkClusterPolicy is the Schema for the networkclusterpolicies API
+type NetworkClusterPolicy struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   NetworkConfigurationSpec   `json:"spec,omitempty"`
-	Status NetworkConfigurationStatus `json:"status,omitempty"`
+	Spec   NetworkClusterPolicySpec   `json:"spec,omitempty"`
+	Status NetworkClusterPolicyStatus `json:"status,omitempty"`
 }
 
 //+kubebuilder:object:root=true
 
-// NetworkConfigurationList contains a list of NetworkConfiguration
-type NetworkConfigurationList struct {
+// NetworkClusterPolicyList contains a list of NetworkClusterPolicy
+type NetworkClusterPolicyList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []NetworkConfiguration `json:"items"`
+	Items           []NetworkClusterPolicy `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&NetworkConfiguration{}, &NetworkConfigurationList{})
+	SchemeBuilder.Register(&NetworkClusterPolicy{}, &NetworkClusterPolicyList{})
 }

@@ -20,11 +20,11 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-var _ = Describe("NicClusterPolicy Webhook", func() {
+var _ = Describe("NetworkClusterPolicy Webhook", func() {
 
-	Context("When creating NetworkConfiguration under Defaulting Webhook", func() {
+	Context("When creating NetworkClusterPolicy under Defaulting Webhook", func() {
 		It("Should fill in the default value if layer 3 is selected with Gaudi", func() {
-			nc := NetworkConfiguration{}
+			nc := NetworkClusterPolicy{}
 
 			nc.Spec.ConfigurationType = gaudiScaleOut
 			nc.Spec.GaudiScaleOut.Layer = "L2"
@@ -35,9 +35,9 @@ var _ = Describe("NicClusterPolicy Webhook", func() {
 		})
 	})
 
-	Context("When creating NetworkConfiguration under Validating Webhook", func() {
+	Context("When creating NetworkClusterPolicy under Validating Webhook", func() {
 		It("Should deny if there's no nodeSelector", func() {
-			nc := NetworkConfiguration{}
+			nc := NetworkClusterPolicy{}
 
 			nc.Spec.ConfigurationType = gaudiScaleOut
 
@@ -45,7 +45,7 @@ var _ = Describe("NicClusterPolicy Webhook", func() {
 		})
 
 		It("Should deny if the configuration type is invalid InputVal", func() {
-			nc := NetworkConfiguration{}
+			nc := NetworkClusterPolicy{}
 			nc.Spec.NodeSelector = map[string]string{
 				"foo": "bar",
 			}
@@ -56,8 +56,8 @@ var _ = Describe("NicClusterPolicy Webhook", func() {
 		})
 
 		It("Should accept good nodeSelectors", func() {
-			nc := NetworkConfiguration{
-				Spec: NetworkConfigurationSpec{
+			nc := NetworkClusterPolicy{
+				Spec: NetworkClusterPolicySpec{
 					ConfigurationType: gaudiScaleOut,
 					GaudiScaleOut: GaudiScaleOutSpec{
 						Layer: "L3BGP",
@@ -79,8 +79,8 @@ var _ = Describe("NicClusterPolicy Webhook", func() {
 		})
 
 		It("Should prevent bad nodeSelectors InputVal", func() {
-			nc := NetworkConfiguration{
-				Spec: NetworkConfigurationSpec{
+			nc := NetworkClusterPolicy{
+				Spec: NetworkClusterPolicySpec{
 					ConfigurationType: gaudiScaleOut,
 					GaudiScaleOut: GaudiScaleOutSpec{
 						Layer: "L3",
@@ -110,11 +110,11 @@ var _ = Describe("NicClusterPolicy Webhook", func() {
 		})
 
 		It("Should accept update with good values and fail with bad ones InputVal", func() {
-			nc := NetworkConfiguration{
+			nc := NetworkClusterPolicy{
 				ObjectMeta: v1.ObjectMeta{
 					Name: "test",
 				},
-				Spec: NetworkConfigurationSpec{
+				Spec: NetworkClusterPolicySpec{
 					ConfigurationType: gaudiScaleOut,
 					GaudiScaleOut: GaudiScaleOutSpec{
 						Layer: "L3",
@@ -136,8 +136,8 @@ var _ = Describe("NicClusterPolicy Webhook", func() {
 		})
 
 		It("Should always accept delete", func() {
-			nc := NetworkConfiguration{
-				Spec: NetworkConfigurationSpec{
+			nc := NetworkClusterPolicy{
+				Spec: NetworkClusterPolicySpec{
 					ConfigurationType: gaudiScaleOut,
 					GaudiScaleOut: GaudiScaleOutSpec{
 						Layer: "L3BGP",
