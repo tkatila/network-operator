@@ -184,7 +184,12 @@ func cmdRun(config *cmdConfig) error {
 	}
 
 	if config.disableNM {
-		err := nm.DisableNetworkManagerForInterfaces(allInterfaces)
+		nmapi, err := nm.NewNetworkManager()
+		if err != nil {
+			return fmt.Errorf("Failed to create NetworkManager: %v", err)
+		}
+
+		err = nm.DisableNetworkManagerForInterfaces(nmapi, allInterfaces)
 		if err != nil {
 			return fmt.Errorf("Failed to disable interfaces in NetworkManager: %v", err)
 		}
