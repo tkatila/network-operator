@@ -1,8 +1,9 @@
-name: validation public
+name: Validation with public runner
 on:
   pull_request:
     branches:
       - 'main'
+  workflow_dispatch:
 
 permissions:
   pull-requests: read # for golangci/golangci-lint-action to fetch pull requests
